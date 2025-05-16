@@ -76,13 +76,6 @@ conn.commit()
 
 conn.commit()
 
-# Set page configuration
-st.set_page_config(
-    page_title="In2Grative TheraBot",
-    page_icon="🧠",
-    layout="centered",
-    initial_sidebar_state="expanded")
-
 # Initialize session state
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Welcome"
