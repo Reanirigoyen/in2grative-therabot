@@ -3,7 +3,15 @@ try:
     __file__
 except NameError:
     __file__ = os.path.abspath('')  
-import streamlit as st
+
+import streamlit as st  # Set page config immediately after this
+st.set_page_config(
+    page_title="In2Grative TheraBot",
+    page_icon="🧠",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
+
 from datetime import datetime, timedelta
 import random
 import pandas as pd
@@ -59,6 +67,12 @@ c.execute('''CREATE TABLE IF NOT EXISTS ai_therapist_questions
               date TEXT,
               question TEXT,
               response TEXT)''')
+
+conn.commit()
+
+# (Rest of your original code follows here...)
+
+# Make sure all Streamlit calls before this point are removed or moved after set_page_config
 
 conn.commit()
 
