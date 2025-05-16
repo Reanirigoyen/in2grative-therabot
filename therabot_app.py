@@ -5,6 +5,7 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
+st.write("🚀 App started!")  # TEMP DEBUG
 import os
 from datetime import datetime, timedelta
 import random
