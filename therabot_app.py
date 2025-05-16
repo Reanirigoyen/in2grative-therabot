@@ -1,17 +1,11 @@
-import os
-try:
-    __file__
-except NameError:
-    __file__ = os.path.abspath('')  
-
-import streamlit as st  # Set page config immediately after this
+import streamlit as st
 st.set_page_config(
     page_title="In2Grative TheraBot",
     page_icon="🧠",
     layout="centered",
     initial_sidebar_state="expanded"
 )
-
+import os
 from datetime import datetime, timedelta
 import random
 import pandas as pd
@@ -68,13 +62,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS ai_therapist_questions
               question TEXT,
               response TEXT)''')
 
-conn.commit()
-
-# (Rest of your original code follows here...)
-
-# Make sure all Streamlit calls before this point are removed or moved after set_page_config
-
-conn.commit()
+conn.commit() # Finalize table creation
 
 # Initialize session state
 if 'current_page' not in st.session_state:
