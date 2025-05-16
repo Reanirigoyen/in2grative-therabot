@@ -1,10 +1,13 @@
 import streamlit as st
+
 st.set_page_config(
     page_title="In2Grative TheraBot",
     page_icon="🧠",
     layout="centered",
     initial_sidebar_state="expanded"
 )
+
+st.write("✅ App loaded successfully!")
 st.write("🚀 App started!")  # TEMP DEBUG
 import os
 from datetime import datetime, timedelta
