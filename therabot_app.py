@@ -95,7 +95,7 @@ def get_image_base64(path):
         return None
 
 # Use the specific path to the image
-image_path = r"In2Grative_Therapy_Logo_Design.png"
+image_path = r"C:\TherabotApp\In2Grative_Therapy_Logo_Design.png"
 
 logo_base64 = get_image_base64(image_path)
 print(f"[INITIAL LOAD] Logo exists? {logo_base64 is not None}")
@@ -630,30 +630,30 @@ def welcome_page():
         
         cols = st.columns(2)
         with cols[0]:
-            if st.button("📊 Check my mood"):
+            if st.button("📊 Check my mood", key="btn_mood"):
                 st.session_state.current_page = "Mood Scale"
                 st.rerun()
-            if st.button("📝 Journal"):
+            if st.button("📝 Journal", key="btn_journal"):
                 st.session_state.current_page = "Journal Entry"
                 st.rerun()
-            if st.button("🧐 Self-Assessment"):
+            if st.button("🧐 Self-Assessment", key="btn_assessment"):
                 st.session_state.current_page = "Self-Assessment"
                 st.rerun()
         with cols[1]:
-            if st.button("🌿 Self-care"):
+            if st.button("🌿 Self-care", key="btn_selfcare"):
                 st.session_state.current_page = "Self-Care Library"
                 st.rerun()
-            if st.button("📈 View my progress"):
+            if st.button("📈 View my progress", key="btn_progress"):
                 st.session_state.current_page = "Progress Tracking"
                 st.rerun()
-            if st.button("💬 Ask AI Therapist"):
+            if st.button("💬 Ask AI Therapist", key="btn_ai"):
                 st.session_state.current_page = "AI Therapist"
                 st.rerun()
         
         # Quick mood check-in
         st.subheader("Quick Mood Check")
         mood = st.slider("How are you feeling right now?", 0, 10, 5)
-        if st.button("Log Quick Mood"):
+        if st.button("Log Quick Mood", key="btn_quick_mood"):
             today = datetime.now().strftime("%Y-%m-%d")
             c.execute('INSERT INTO mood_entries (user_id, date, mood) VALUES (?,?,?)',
                       (st.session_state.user_id, today, mood))
@@ -969,7 +969,6 @@ def show_disclaimer():
         The AI responses are for informational purposes only and should not be considered medical advice.
         """)
 
-# Main app logic
 def main():
     # Add debugging code for the image file issue
     import os
@@ -977,9 +976,12 @@ def main():
     
     print(f"[MAIN] Current working directory: {os.getcwd()}")
     
-    # Use the same full path that works elsewhere
-    image_path = r"C:\Users\reanh\OneDrive\Desktop\in2grative_therabot_gsheets_bundle\In2Grative_Therapy_Logo_Design.png"
+    # Debug image path
+    image_path = r"C:\TherabotApp\In2Grative_Therapy_Logo_Design.png"
     print(f"[MAIN] Does logo exist at full path? {os.path.exists(image_path)}")
+    if not os.path.exists(image_path):
+        print(f"[ERROR] Could not find logo at: {image_path}")
+        print(f"[DEBUG] Directory contents: {os.listdir(os.path.dirname(image_path))}")
     
     # Initialize session state
     if 'current_page' not in st.session_state:
@@ -987,22 +989,22 @@ def main():
     if 'user_id' not in st.session_state:
         st.session_state.user_id = None
     
-   # Sidebar navigation (only show when logged in)
-if st.session_state.user_id:
-    with st.sidebar:
-        print(f"[SIDEBAR] Logo exists? {logo_base64 is not None}")
-        if logo_base64:
-            st.markdown(f"""
-            <div style="text-align: center;">
-                <img src="data:image/png;base64,{logo_base64}" style="max-width: 200px; margin-bottom: 10px;">
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div style="text-align: center;">
-                <h3>In2Grative TheraBot</h3>
-            </div>
-            """, unsafe_allow_html=True)            
+    # Sidebar navigation (only show when logged in)
+    if st.session_state.user_id:
+        with st.sidebar:
+            print(f"[SIDEBAR] Logo exists? {logo_base64 is not None}")
+            if logo_base64:
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <img src="data:image/png;base64,{logo_base64}" style="max-width: 200px; margin-bottom: 10px;">
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <h3>In2Grative TheraBot</h3>
+                </div>
+                """, unsafe_allow_html=True)            
             st.markdown(f"### Welcome, {st.session_state.username}!")
             
             nav_options = {
@@ -1053,6 +1055,5 @@ if st.session_state.user_id:
         st.warning("Please login to access this page")
         st.session_state.current_page = "Welcome"
         st.rerun()
-
 if __name__ == "__main__":
     main()
