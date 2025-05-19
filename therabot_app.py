@@ -95,7 +95,8 @@ def get_image_base64(path):
         return None
 
 # Use the specific path to the image
-image_path = r"C:\Users\reanh\OneDrive\Desktop\in2grative_therabot_gsheets_bundle\In2Grative_Therapy_Logo_Design.png"
+image_path = r"In2Grative_Therapy_Logo_Design.png"
+
 logo_base64 = get_image_base64(image_path)
 print(f"[INITIAL LOAD] Logo exists? {logo_base64 is not None}")
 
