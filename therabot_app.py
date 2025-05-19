@@ -969,7 +969,6 @@ def show_disclaimer():
         The AI responses are for informational purposes only and should not be considered medical advice.
         """)
 
-# Main app logic
 def main():
     # Add debugging code for the image file issue
     import os
@@ -977,9 +976,12 @@ def main():
     
     print(f"[MAIN] Current working directory: {os.getcwd()}")
     
-    # Use the same full path that works elsewhere
+    # Debug image path
     image_path = r"C:\TherabotApp\In2Grative_Therapy_Logo_Design.png"
     print(f"[MAIN] Does logo exist at full path? {os.path.exists(image_path)}")
+    if not os.path.exists(image_path):
+        print(f"[ERROR] Could not find logo at: {image_path}")
+        print(f"[DEBUG] Directory contents: {os.listdir(os.path.dirname(image_path))}")
     
     # Initialize session state
     if 'current_page' not in st.session_state:
@@ -987,22 +989,22 @@ def main():
     if 'user_id' not in st.session_state:
         st.session_state.user_id = None
     
-   # Sidebar navigation (only show when logged in)
-if st.session_state.user_id:
-    with st.sidebar:
-        print(f"[SIDEBAR] Logo exists? {logo_base64 is not None}")
-        if logo_base64:
-            st.markdown(f"""
-            <div style="text-align: center;">
-                <img src="data:image/png;base64,{logo_base64}" style="max-width: 200px; margin-bottom: 10px;">
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div style="text-align: center;">
-                <h3>In2Grative TheraBot</h3>
-            </div>
-            """, unsafe_allow_html=True)            
+    # Sidebar navigation (only show when logged in)
+    if st.session_state.user_id:
+        with st.sidebar:
+            print(f"[SIDEBAR] Logo exists? {logo_base64 is not None}")
+            if logo_base64:
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <img src="data:image/png;base64,{logo_base64}" style="max-width: 200px; margin-bottom: 10px;">
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="text-align: center;">
+                    <h3>In2Grative TheraBot</h3>
+                </div>
+                """, unsafe_allow_html=True)            
             st.markdown(f"### Welcome, {st.session_state.username}!")
             
             nav_options = {
@@ -1053,6 +1055,5 @@ if st.session_state.user_id:
         st.warning("Please login to access this page")
         st.session_state.current_page = "Welcome"
         st.rerun()
-
 if __name__ == "__main__":
     main()
