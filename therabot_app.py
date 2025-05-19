@@ -95,10 +95,18 @@ def get_image_base64(path):
         return None
 
 # Use the specific path to the image
-image_path = r"C:\TherabotApp\In2Grative_Therapy_Logo_Design.png"
+import os
+from PIL import Image
 
-logo_base64 = get_image_base64(image_path)
-print(f"[INITIAL LOAD] Logo exists? {logo_base64 is not None}")
+image_path = os.path.join(os.path.dirname(__file__), "In2Grative_Therapy_Logo_Design.png")
+
+try:
+    logo_base64 = get_image_base64(image_path)
+    print(f"[INITIAL LOAD] Logo exists? {logo_base64 is not None}")
+except Exception as e:
+    print(f"Error loading logo: {e}")
+    logo_base64 = None
+    # Optionally provide a default image or continue without logo
 
 # Authentication helpers
 def make_hashes(password):
