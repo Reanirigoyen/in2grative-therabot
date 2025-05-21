@@ -72,6 +72,10 @@ conn.commit() # Finalize table creation
 # Initialize session state
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Welcome"
+
+if 'conversation_history' not in st.session_state:
+    st.session_state.conversation_history = []
+
 if 'user_id' not in st.session_state:
     st.session_state.user_id = None
 if 'username' not in st.session_state:
@@ -743,6 +747,11 @@ def self_care_guidance():
             """)
 
 # Enhanced Welcome Page with User Type Selection
+
+def get_user_type(user_id):
+    # Placeholder logic - customize this based on user profile if needed
+    return "general", False
+
 def welcome_page():
     if logo_base64:
         st.markdown(f"""
@@ -1188,7 +1197,11 @@ def main():
     # Initialize session state
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "Welcome"
-    if 'user_id' not in st.session_state:
+    
+if 'conversation_history' not in st.session_state:
+    st.session_state.conversation_history = []
+
+if 'user_id' not in st.session_state:
         st.session_state.user_id = None
     
     # Sidebar navigation (only show when logged in)
@@ -1259,3 +1272,14 @@ def main():
         st.rerun()
 if __name__ == "__main__":
     main()
+
+def crisis_support():
+    st.header("🆘 Crisis Support")
+    st.warning("""
+    If you or someone you know is in immediate danger, please call 911.
+
+    **Crisis Resources:**
+    - 🇺🇸 Veterans Crisis Line: 988 then press 1
+    - 💙 Crisis Text Line: Text HOME to 741741
+    - 🌍 International: [befrienders.org](https://www.befrienders.org)
+    """)
