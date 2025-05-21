@@ -72,10 +72,6 @@ conn.commit() # Finalize table creation
 # Initialize session state
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "Welcome"
-
-if 'conversation_history' not in st.session_state:
-    st.session_state.conversation_history = []
-
 if 'user_id' not in st.session_state:
     st.session_state.user_id = None
 if 'username' not in st.session_state:
@@ -747,11 +743,6 @@ def self_care_guidance():
             """)
 
 # Enhanced Welcome Page with User Type Selection
-
-def get_user_type(user_id):
-    # Placeholder logic - customize this based on user profile if needed
-    return "general", False
-
 def welcome_page():
     if logo_base64:
         st.markdown(f"""
@@ -874,10 +865,6 @@ def welcome_page():
                       (st.session_state.user_id, today, mood))
             conn.commit()
             st.success("Mood logged!")
-
-
-# ... (previous imports and database setup remain the same until journal_entry function)
-
 # Enhanced Journal with AI memory
 def journal_entry():
     st.header("📝 Reflective Journal")
