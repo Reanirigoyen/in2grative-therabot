@@ -202,17 +202,20 @@ def answer_ai_therapist_question(question, user_id=None):
             """
     
     # Default response
-    return """
-    Thank you for sharing. That sounds like an important concern. 
-    While I can offer general support, I encourage you to discuss this with a mental health professional for personalized guidance.
-    
-    Some things that might help:
-    - Journaling about your thoughts and feelings
-    - Talking with trusted friends/family
-    - Practicing self-care activities
-    
-    Would you like me to suggest some resources that might be relevant?
-    """
+    default_responses = [
+        "That's a really thoughtful question. Let's unpack it together.",
+        "You're not alone in feeling this way. Want to explore some options?",
+        "I hear you. How long have you been feeling like this?",
+        "You're doing great by reaching out. Let's explore that more.",
+        "Sometimes naming the feeling is the first step. What name would you give what you're feeling?",
+        "That’s tough. Have you tried grounding or somatic check-ins when that feeling shows up?",
+        "This reminds me of something you shared last week. How does this connect for you now?",
+        "I wonder if your inner critic is speaking up here. What might your compassionate self say instead?",
+        "That’s an important insight. Want a CBT-style reframe for that?",
+        "You're showing a lot of self-awareness by noticing this."
+    ]
+    import random
+    return random.choice(default_responses)
 
 # Data Visualization Functions
 def plot_mood_trend(user_id):
@@ -710,7 +713,7 @@ def mood_scale():
                     - Be gentle with yourself - moods naturally fluctuate
                     """)
             elif mood <= 6:
-                response = "Thanks for checking in. Middle-of-the-road days are normal. Maybe we can find a small boost? ✨"
+                response = "Thanks for checking in. Middle-of-the-road days are normal and it is about progress, not perfection, even if we feel like things aren't moving as fast as we would like. Maybe we can find a small boost? ✨"
             else:
                 response = "That's wonderful to hear! Let's build on this positive energy! 🌟"
             
