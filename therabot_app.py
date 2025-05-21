@@ -350,7 +350,7 @@ def format_response(response, technique):
     **{technique} Approach**  
     {response}
     
-    *This is not medical advice. If you're in crisis, please contact a professional immediately.*
+    *This does not replace medical advice. If you're in crisis, please contact a professional or 911 immediately.*
     """
 
 def crisis_response():
@@ -374,15 +374,16 @@ def crisis_response():
     Please reach out now. Your service to others matters - you matter.
     
     st.subheader("When to Seek Immediate Help")
-    st.write("""
-    Consider reaching out for professional help if you're experiencing:
-    - Thoughts of harming yourself or others
-    - Inability to perform daily tasks
-    - Extreme mood swings
-    - Withdrawal from social interactions
-    - Significant changes in eating/sleeping patterns
-    - Hearing voices or seeing things others don't
-    """)
+st.write("""
+Consider reaching out for professional help if you're experiencing:
+- Thoughts of harming yourself or others
+- Inability to perform daily tasks
+- Extreme mood swings
+- Withdrawal from social interactions
+- Significant changes in eating/sleeping patterns
+- Hearing voices or seeing things others don't
+""")
+
 
 # Self-Assessment Tools
 def self_assessments():
