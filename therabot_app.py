@@ -9,6 +9,7 @@ st.set_page_config(
 
 st.write("✅ App loaded successfully!")
 st.write("🚀 App started!")  # TEMP DEBUG
+# In therabot_app.py (above your main code)
 import os
 from datetime import datetime, timedelta
 import random
