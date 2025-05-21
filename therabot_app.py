@@ -133,8 +133,8 @@ def login_user(username, password):
 
 # AI Memory and Analysis Functions
 def analyze_journal_sentiment(text):
-    positive_words = ['happy', 'good', 'great', 'joy', 'excited', 'calm', 'peaceful']
-    negative_words = ['sad', 'bad', 'angry', 'anxious', 'stress', 'depressed']
+    positive_words = ['happy', 'good', 'great', 'joy', 'excited', 'calm', 'peaceful', 'proud', 'grateful']
+    negative_words = ['sad', 'bad', 'angry', 'anxious', 'stress', 'depressed', 'trauma', 'triggered', 'fear']
     score = 0
     text_lower = text.lower()
     for word in positive_words:
@@ -147,33 +147,159 @@ def analyze_journal_sentiment(text):
     return score / word_count
 
 def generate_ai_response(user_id):
+    user_type, trauma_history = get_user_type(user_id)
     global c
     c.execute('SELECT entry FROM journal_entries WHERE user_id = ? ORDER BY date DESC LIMIT 3', (user_id,))
     recent_entries = c.fetchall()
     c.execute('SELECT mood FROM mood_entries WHERE user_id = ? ORDER BY date DESC LIMIT 7', (user_id,))
     mood_data = c.fetchall()
     avg_mood = sum([m[0] for m in mood_data])/len(mood_data) if mood_data else 5
+    
+    # Customize response based on user type
+    if user_type == 'veteran':
+        base_response = "Thank you for your service. "
+    elif user_type == 'first_responder':
+        base_response = "Your work is deeply valued. "
+    else:
+        base_response = ""
+    
     if recent_entries:
         sentiment = analyze_journal_sentiment(" ".join([e[0] for e in recent_entries]))
         if sentiment > 0.3:
-            return "I'm noticing some positive themes in your recent reflections. Let's build on this momentum!"
+            return base_response + "I'm noticing some positive themes in your recent reflections. Let's build on this momentum!"
         elif sentiment < -0.3:
-            return "Your recent entries suggest you've been facing some challenges. Remember growth often comes through difficulty."
+            if trauma_history:
+                return base_response + "Your recent entries suggest you've been facing some challenges related to past experiences. Would you like to explore some trauma-informed coping strategies?"
+            return base_response + "Your recent entries suggest you've been facing some challenges. Remember growth often comes through difficulty."
     if avg_mood < 4:
-        return "I see your mood has been lower recently. Would you like to explore some coping strategies?"
-    return "How are you feeling today compared to yesterday?"
+        return base_response + "I see your mood has been lower recently. Would you like to explore some coping strategies?"
+    return base_response + "How are you feeling today compared to yesterday?"
 
+def generate_dynamic_journal_prompt(user_id):
+    c.execute('SELECT entry FROM journal_entries WHERE user_id = ? ORDER BY date DESC LIMIT 5', (user_id,))
+    recent_entries = [e[0] for e in c.fetchall()]
+    
+    if not recent_entries:
+        return random.choice([
+            "What's been on your mind lately?",
+            "What are you grateful for today?",
+            "Describe a challenge you're facing and how you might approach it"
+        ])
+    
+    # Analyze for recurring themes
+    all_text = " ".join(recent_entries).lower()
+    themes = {
+        'relationships': ['friend', 'partner', 'family', 'relationship', 'love', 'argue'],
+        'work': ['work', 'job', 'career', 'boss', 'colleague'],
+        'trauma': ['trauma', 'trigger', 'memory', 'flashback', 'ptsd'],
+        'anxiety': ['anxious', 'worry', 'fear', 'panic', 'nervous'],
+        'achievement': ['accomplish', 'proud', 'success', 'achievement', 'goal']
+    }
+    
+    detected_themes = []
+    for theme, keywords in themes.items():
+        if any(keyword in all_text for keyword in keywords):
+            detected_themes.append(theme)
+    
+    # Generate personalized prompt
+    if not detected_themes:
+        return random.choice([
+            "What's one thing you'd like to remember from today?",
+            "Write a letter to your future self",
+            "What emotions have you felt most strongly this week?"
+        ])
+    
+    main_theme = random.choice(detected_themes)
+    if main_theme == 'relationships':
+        return random.choice([
+            "How have your relationships impacted your mood recently?",
+            "What's one relationship dynamic you'd like to improve?",
+            "Describe a meaningful connection you've experienced recently"
+        ])
+    elif main_theme == 'work':
+        return random.choice([
+            "How is your work affecting your wellbeing?",
+            "What's one work-related stressor you'd like to manage better?",
+            "Describe a work achievement you're proud of"
+        ])
+    elif main_theme == 'trauma':
+        return random.choice([
+            "What helps you feel grounded when recalling difficult experiences?",
+            "How have you grown from past challenges?",
+            "What's one way you've learned to care for yourself when triggered?"
+        ])
+    elif main_theme == 'anxiety':
+        return random.choice([
+            "What situations tend to trigger your anxiety?",
+            "Describe a time you successfully managed anxious feelings",
+            "What physical sensations do you notice when anxious?"
+        ])
+    elif main_theme == 'achievement':
+        return random.choice([
+            "What personal strengths helped you achieve recent successes?",
+            "How do you celebrate your accomplishments?",
+            "What goals are you working toward now?"
+        ])
+    
+    return "What would you like to reflect on today?"
 
-def answer_ai_therapist_question(question, user_id=None):
+# Enhanced AI Therapist Responses with Different Modalities
+def answer_ai_therapist_question(question, user_id=None, therapy_mode='CBT'):
     """Generate a response to a mental health question with appropriate disclaimers"""
-    # Define common topics and responses
-    common_topics = {
-        "anxiety": "Anxiety can feel overwhelming, but techniques like deep breathing, grounding exercises, and challenging anxious thoughts can help. Would you like some specific exercises?",
-        "depression": "Depression often makes everything feel harder. Small steps like maintaining a routine, getting sunlight, and reaching out to loved ones can help. Have you considered speaking with a professional?",
-        "stress": "Stress management often involves identifying sources of stress, setting boundaries, and practicing relaxation techniques. What's causing you the most stress right now?",
-        "relationships": "Relationships can be complex. Good communication involves active listening and expressing your needs clearly. What aspect of your relationships are you finding challenging?",
-        "self-esteem": "Building self-esteem is a process. Try focusing on your strengths, practicing self-compassion, and setting achievable goals. What's one thing you appreciate about yourself today?",
-        "sleep": "Good sleep hygiene includes consistent bedtimes, limiting screens before bed, and creating a restful environment. Are you having trouble falling asleep or staying asleep?"
+    user_type, trauma_history = get_user_type(user_id) if user_id else ('general', 0)
+    
+    # Define common topics and responses for different therapy modes
+    therapy_responses = {
+        'CBT': {
+            "anxiety": "Let's examine the thoughts behind your anxiety. What evidence supports or contradicts your anxious thoughts?",
+            "depression": "Negative thought patterns often fuel depression. Can you identify any cognitive distortions in your thinking?",
+            "stress": "Stress often comes from our appraisal of situations. How might you reframe this stressful situation?",
+            "relationships": "Our thoughts about relationships affect our feelings. What automatic thoughts come up in your relationships?"
+        },
+        'ACT': {
+            "anxiety": "Rather than fighting anxiety, can you make space for it while still taking valued actions?",
+            "depression": "What values are important to you, and how might you take small steps toward them despite depressive feelings?",
+            "stress": "Stress is inevitable, but suffering is optional. What would acceptance of this situation look like?",
+            "relationships": "What core values do you want to guide your relationships?"
+        },
+        'DBT': {
+            "anxiety": "Let's try a distress tolerance skill. Would paced breathing or self-soothing with senses help right now?",
+            "depression": "Emotion regulation begins with naming emotions. What specific emotions are you feeling?",
+            "stress": "In crisis, remember STOP: Stop, Take a step back, Observe, Proceed mindfully.",
+            "relationships": "DEAR MAN skills can help: Describe, Express, Assert, Reinforce, stay Mindful, Appear confident, Negotiate."
+        },
+        'IFS': {
+            "anxiety": "Which part of you feels anxious? Can you describe it with curiosity rather than judgment?",
+            "depression": "A depressed part may be trying to protect you. What might it be protecting you from?",
+            "stress": "When stressed, which parts of you are activated? Is there a calm Self that can witness them?",
+            "relationships": "Which parts of you get activated in relationships? How might they interact with others' parts?"
+        },
+        'CPT': {
+            "trauma": "Let's examine stuck points in your trauma narrative. What thoughts feel most distressing?",
+            "anxiety": "Trauma can create unhelpful beliefs. What new understanding might challenge these beliefs?",
+            "depression": "How might trauma-related beliefs be affecting your current mood?",
+            "relationships": "How might trauma experiences be influencing your relationship patterns?"
+        },
+        'Somatic': {
+            "trauma": "Notice any body sensations as we discuss this. Where do you feel it in your body?",
+            "anxiety": "Let's ground in the body. Can you feel your feet on the floor and your breath moving?",
+            "depression": "Depression often shows in the body. What physical sensations accompany your low mood?",
+            "relationships": "How does your body respond when thinking about important relationships?"
+        }
+    }
+    
+    # Specialized responses for veterans and first responders
+    specialized_responses = {
+        'veteran': {
+            "combat": "Combat experiences can have lasting impacts. How are these memories affecting you now?",
+            "transition": "Transitioning to civilian life brings challenges. What aspects feel most difficult?",
+            "moral_injury": "Moral injury involves deep wounds. What thoughts keep coming up about these experiences?"
+        },
+        'first_responder': {
+            "critical_incident": "Critical incidents can accumulate. How has this recent event affected you?",
+            "shift_work": "Irregular schedules disrupt wellbeing. How are you managing sleep and recovery?",
+            "compassion_fatigue": "Caring constantly can deplete reserves. What replenishes your sense of purpose?"
+        }
     }
     
     # Check for crisis keywords
@@ -183,35 +309,60 @@ def answer_ai_therapist_question(question, user_id=None):
         **Important:** I'm deeply concerned about what you're sharing. 
         You're not alone, and there are people who want to help:
         
-        - In the U.S.: Call/text 988 or chat at 988lifeline.org
-        - UK: Call 116 123 (Samaritans)
-        - International: Find a crisis line at www.befrienders.org
+        - Veterans/Military: Press 1 after dialing 988 (U.S.)
+        - First Responders: 1-800-267-5463 (Canada) or 1-888-731-3473 (U.S.)
+        - General Crisis: Call/text 988 or chat at 988lifeline.org
         
         Please reach out to a trusted person or professional right now. 
         Your life matters.
         """
     
-    # Check for common topics
-    for topic, response in common_topics.items():
+    # Check for specialized topics first
+    if user_type in ['veteran', 'first_responder']:
+        for topic, response in specialized_responses[user_type].items():
+            if topic in question.lower():
+                return f"""
+                **Regarding your experience:** {response}
+                
+                *{therapy_mode} perspective:* {therapy_responses[therapy_mode].get('trauma', 'This seems important to explore further.')}
+                
+                *Remember: I'm an AI assistant, not a licensed therapist. 
+                For professional help, consider reaching out to a mental health professional.*
+                """
+    
+    # Check for trauma-related topics
+    trauma_keywords = ["trauma", "ptsd", "flashback", "trigger", "memory"]
+    if trauma_history or any(keyword in question.lower() for keyword in trauma_keywords):
+        return f"""
+        **Trauma-informed response:** {therapy_responses[therapy_mode].get('trauma', 'Trauma affects everyone differently. Safety and pacing are important in healing.')}
+        
+        *Therapeutic approach ({therapy_mode}):* {therapy_responses[therapy_mode].get('trauma', 'Would you like to explore this memory with a grounding exercise?')}
+        
+        *Remember: Trauma healing often benefits from professional support. 
+        Consider reaching out to a trauma specialist.*
+        """
+    
+    # Check for common topics in current therapy mode
+    for topic, response in therapy_responses[therapy_mode].items():
         if topic in question.lower():
             return f"""
-            **Regarding {topic}:** {response}
+            **{therapy_mode} perspective on {topic}:** {response}
             
             *Remember: I'm an AI assistant, not a licensed therapist. 
             For professional help, consider reaching out to a mental health professional.*
             """
     
-    # Default response
-    return """
-    Thank you for sharing. That sounds like an important concern. 
-    While I can offer general support, I encourage you to discuss this with a mental health professional for personalized guidance.
+    # Default response with current therapy mode
+    return f"""
+    **{therapy_mode} perspective:** Thank you for sharing. That sounds important to explore. 
+    From a {therapy_mode} perspective, we might examine {random.choice(['your thoughts about this', 'how you experience this emotionally', 'what values are involved', 'how your body responds'])}.
     
-    Some things that might help:
-    - Journaling about your thoughts and feelings
-    - Talking with trusted friends/family
-    - Practicing self-care activities
+    Some approaches that might help:
+    - Journaling about this experience
+    - Practicing a grounding exercise
+    - Exploring alternative perspectives
     
-    Would you like me to suggest some resources that might be relevant?
+    Would you like me to suggest some {therapy_mode} techniques that might be relevant?
     """
 
 # Data Visualization Functions
@@ -249,198 +400,163 @@ def plot_self_care_categories(user_id):
     
     return fig
 
-# Crisis Support Resources
-def crisis_support():
-    st.header("🆘 Immediate Support Resources")
+# Trauma Assessment Tools
+def trauma_assessment():
+    st.header("🕯️ Trauma Screening Tools")
     st.warning("""
-    **If you're in crisis or experiencing thoughts of self-harm, please reach out now:**
-    
-    - 🇺🇸 **U.S. National Suicide Prevention Lifeline**: Call/text **988** or chat at [988lifeline.org](https://988lifeline.org)
-    - 🇬🇧 **UK Samaritans**: Call **116 123** or email jo@samaritans.org
-    - 🌍 **International Help**: Find crisis centers at [Befrienders Worldwide](https://www.befrienders.org)
-    - 💬 **Crisis Text Line**: Text HOME to **741741** in the U.S.
+    **Important:** These assessments screen for possible trauma symptoms but cannot diagnose PTSD. 
+    Trauma affects everyone differently. Consider professional evaluation for concerning results.
     """)
     
-    st.subheader("Additional Mental Health Resources")
-    st.write("""
-    - 🏥 [National Alliance on Mental Illness (NAMI)](https://www.nami.org)
-    - 🧠 [Mental Health America](https://www.mhanational.org)
-    - 🧘 [Headspace for Meditation](https://www.headspace.com)
-    - 📱 [Talkspace Online Therapy](https://www.talkspace.com)
-    - 🌎 [Psychology Today Therapist Finder](https://www.psychologytoday.com)
-    """)
-    
-    st.subheader("When to Seek Immediate Help")
-    st.write("""
-    Consider reaching out for professional help if you're experiencing:
-    - Thoughts of harming yourself or others
-    - Inability to perform daily tasks
-    - Extreme mood swings
-    - Withdrawal from social interactions
-    - Significant changes in eating/sleeping patterns
-    - Hearing voices or seeing things others don't
-    """)
-
-# Self-Assessment Tools
-def self_assessments():
-    st.header("🧐 Self-Assessment Tools")
-    st.write("""
-    *These brief screenings can help identify potential mental health concerns, 
-    but they are not diagnostic tools. Always consult a professional for assessment.*
-    """)
-    
-    tab1, tab2, tab3 = st.tabs(["Depression", "Anxiety", "Stress"])
+    tab1, tab2 = st.tabs(["PCL-5 (PTSD Checklist)", "PTSD Symptom Scale"])
     
     with tab1:
-        st.subheader("PHQ-9 Depression Screening")
-        st.write("Over the last 2 weeks, how often have you been bothered by:")
+        st.subheader("PCL-5: PTSD Checklist for DSM-5")
+        st.write("""
+        In the past month, how much were you bothered by:
+        (1 = Not at all, 2 = A little bit, 3 = Moderately, 4 = Quite a bit, 5 = Extremely)
+        """)
         
-        phq9_questions = [
-            "Little interest or pleasure in doing things",
-            "Feeling down, depressed, or hopeless",
-            "Trouble falling or staying asleep, or sleeping too much",
-            "Feeling tired or having little energy",
-            "Poor appetite or overeating",
-            "Feeling bad about yourself or that you're a failure",
-            "Trouble concentrating on things",
-            "Moving/speaking slowly or being fidgety/restless",
-            "Thoughts that you'd be better off dead or hurting yourself"
+        pcl5_questions = [
+            "Repeated, disturbing memories of the stressful experience?",
+            "Repeated, disturbing dreams of the stressful experience?",
+            "Suddenly feeling or acting as if the stressful experience were happening again?",
+            "Feeling very upset when something reminded you of the stressful experience?",
+            "Having strong physical reactions when something reminded you of the stressful experience?",
+            "Avoiding memories, thoughts, or feelings related to the stressful experience?",
+            "Avoiding external reminders of the stressful experience?",
+            "Trouble remembering important parts of the stressful experience?",
+            "Having strong negative beliefs about yourself, others, or the world?",
+            "Blaming yourself or someone else for the stressful experience?",
+            "Having strong negative feelings like fear, horror, anger, guilt, or shame?",
+            "Loss of interest in activities you used to enjoy?",
+            "Feeling distant or cut off from other people?",
+            "Trouble experiencing positive feelings?",
+            "Irritable behavior, angry outbursts, or acting aggressively?",
+            "Taking too many risks or doing things that could cause you harm?",
+            "Being 'superalert' or watchful or on guard?",
+            "Feeling jumpy or easily startled?",
+            "Having difficulty concentrating?",
+            "Trouble falling or staying asleep?"
         ]
         
         scores = []
-        for i, question in enumerate(phq9_questions):
-            score = st.radio(
+        for i, question in enumerate(pcl5_questions):
+            score = st.select_slider(
                 question,
-                options=("Not at all", "Several days", "More than half the days", "Nearly every day"),
-                key=f"phq9_{i}"
+                options=[1, 2, 3, 4, 5],
+                key=f"pcl5_{i}"
             )
-            scores.append({"Not at all": 0, "Several days": 1, "More than half the days": 2, "Nearly every day": 3}[score])
+            scores.append(score)
         
-        if st.button("Calculate PHQ-9 Score"):
+        if st.button("Calculate PCL-5 Score"):
             total = sum(scores)
-            st.write(f"**Your score:** {total}/27")
+            st.write(f"**Your score:** {total}/80")
             
-            if total >= 15:
+            if total >= 33:
                 st.error("""
-                **Score suggests moderately severe depression.**
-                Consider reaching out to a mental health professional for evaluation.
+                **Score suggests significant PTSD symptoms.**
+                Consider reaching out to a trauma specialist for evaluation.
+                Resources:
+                - VA PTSD Program (for veterans)
+                - Psychology Today's trauma specialist finder
+                - ISTSS.org therapist directory
                 """)
-            elif total >= 10:
+            elif total >= 20:
                 st.warning("""
-                **Score suggests moderate depression.**
-                Monitoring your mood and considering professional support may be helpful.
-                """)
-            elif total >= 5:
-                st.info("""
-                **Score suggests mild depression.**
-                Self-care strategies and monitoring may be beneficial.
+                **Score suggests moderate PTSD symptoms.**
+                Monitoring symptoms and considering professional support may be helpful.
                 """)
             else:
                 st.success("""
-                **Score suggests minimal depression.**
+                **Score suggests minimal PTSD symptoms.**
                 Continue healthy habits that support your wellbeing.
                 """)
+            
+            # Store assessment results
+            if 'user_id' in st.session_state:
+                today = datetime.now().strftime("%Y-%m-%d")
+                c.execute('INSERT INTO trauma_assessments (user_id, date, pcl5_score) VALUES (?,?,?)',
+                          (st.session_state.user_id, today, total))
+                conn.commit()
     
     with tab2:
-        st.subheader("GAD-7 Anxiety Screening")
-        st.write("Over the last 2 weeks, how often have you been bothered by:")
+        st.subheader("PTSD Symptom Scale (PSS-I)")
+        st.write("""
+        In the past 2 weeks, how often have you experienced:
+        (0 = Not at all, 1 = Once per week, 2 = 2-4 times per week, 3 = 5+ times per week)
+        """)
         
-        gad7_questions = [
-            "Feeling nervous, anxious, or on edge",
-            "Not being able to stop or control worrying",
-            "Worrying too much about different things",
-            "Trouble relaxing",
-            "Being so restless that it's hard to sit still",
-            "Becoming easily annoyed or irritable",
-            "Feeling afraid as if something awful might happen"
+        ptsd_questions = [
+            "Intrusive memories of the event",
+            "Distressing dreams about the event",
+            "Flashbacks or feeling like it's happening again",
+            "Upset when reminded of the event",
+            "Physical reactions when reminded (e.g., sweating, pounding heart)",
+            "Avoiding thoughts or feelings about the event",
+            "Avoiding activities or situations that remind you",
+            "Trouble remembering important parts of the event",
+            "Loss of interest in activities",
+            "Feeling detached from others",
+            "Difficulty experiencing positive emotions",
+            "Irritability or anger outbursts",
+            "Difficulty concentrating",
+            "Trouble falling or staying asleep",
+            "Being overly alert or watchful",
+            "Easily startled"
         ]
         
         scores = []
-        for i, question in enumerate(gad7_questions):
+        for i, question in enumerate(ptsd_questions):
             score = st.radio(
                 question,
-                options=("Not at all", "Several days", "More than half the days", "Nearly every day"),
-                key=f"gad7_{i}"
+                options=[0, 1, 2, 3],
+                horizontal=True,
+                key=f"ptsd_{i}"
             )
-            scores.append({"Not at all": 0, "Several days": 1, "More than half the days": 2, "Nearly every day": 3}[score])
+            scores.append(score)
         
-        if st.button("Calculate GAD-7 Score"):
+        if st.button("Calculate PSS Score"):
             total = sum(scores)
-            st.write(f"**Your score:** {total}/21")
+            st.write(f"**Your score:** {total}/48")
             
-            if total >= 15:
+            if total >= 20:
                 st.error("""
-                **Score suggests severe anxiety.**
-                Consider reaching out to a mental health professional for evaluation.
+                **Score suggests significant PTSD symptoms.**
+                Consider reaching out to a trauma specialist for evaluation.
                 """)
-            elif total >= 10:
+            elif total >= 11:
                 st.warning("""
-                **Score suggests moderate anxiety.**
-                Monitoring your anxiety and considering professional support may be helpful.
-                """)
-            elif total >= 5:
-                st.info("""
-                **Score suggests mild anxiety.**
-                Self-care strategies and monitoring may be beneficial.
+                **Score suggests moderate PTSD symptoms.**
+                Monitoring symptoms and considering professional support may be helpful.
                 """)
             else:
                 st.success("""
-                **Score suggests minimal anxiety.**
+                **Score suggests minimal PTSD symptoms.**
                 Continue healthy habits that support your wellbeing.
                 """)
-    
-    with tab3:
-        st.subheader("Perceived Stress Scale")
-        st.write("How often have you felt or thought this way in the last month:")
-        
-        pss_questions = [
-            "Unable to control important things in your life",
-            "Confident about handling personal problems",
-            "Things were going your way",
-            "Difficulties were piling up so high you couldn't overcome them"
-        ]
-        
-        scores = []
-        for i, question in enumerate(pss_questions):
-            if i in [1, 2]:  # Positively worded questions
-                score = st.radio(
-                    question,
-                    options=("Never", "Almost never", "Sometimes", "Fairly often", "Very often"),
-                    key=f"pss_{i}"
-                )
-                rev_score = {"Never": 4, "Almost never": 3, "Sometimes": 2, "Fairly often": 1, "Very often": 0}[score]
-                scores.append(rev_score)
-            else:
-                score = st.radio(
-                    question,
-                    options=("Never", "Almost never", "Sometimes", "Fairly often", "Very often"),
-                    key=f"pss_{i}"
-                )
-                scores.append({"Never": 0, "Almost never": 1, "Sometimes": 2, "Fairly often": 3, "Very often": 4}[score])
-        
-        if st.button("Calculate Stress Score"):
-            total = sum(scores)
-            st.write(f"**Your score:** {total}/16")
             
-            if total >= 13:
-                st.error("""
-                **High perceived stress.**
-                Consider stress management techniques and professional support.
-                """)
-            elif total >= 7:
-                st.warning("""
-                **Moderate perceived stress.**
-                Stress management strategies may be helpful.
-                """)
-            else:
-                st.success("""
-                **Low perceived stress.**
-                Continue healthy coping strategies.
-                """)
+            # Store assessment results
+            if 'user_id' in st.session_state:
+                today = datetime.now().strftime("%Y-%m-%d")
+                c.execute('INSERT INTO trauma_assessments (user_id, date, ptsdi_score) VALUES (?,?,?)',
+                          (st.session_state.user_id, today, total))
+                conn.commit()
 
-# AI Therapist Feature
+# Enhanced AI Therapist Feature with Conversation Flow
 def ai_therapist():
-    st.header("💬 Ask an AI Therapist")
+    st.header("💬 AI Therapist")
+    
+    # Therapy mode selection
+    st.subheader("Therapy Approach")
+    therapy_mode = st.radio(
+        "Select therapeutic approach:",
+        ("CBT", "ACT", "DBT", "IFS", "CPT", "Somatic"),
+        horizontal=True,
+        index=0
+    )
+    st.session_state.therapy_mode = therapy_mode
+    
     st.warning("""
     **Important Disclaimer:** 
     This AI is not a substitute for professional therapy. It can provide general 
@@ -448,55 +564,94 @@ def ai_therapist():
     For emergencies, please use the [crisis resources](#crisis-support).
     """)
     
-    st.write("""
-    You can ask general questions about:
-    - Coping strategies
-    - Understanding emotions
-    - Mental health information
-    - Self-care techniques
-    - Relationship concerns
-    """)
+    # Display conversation history
+    if st.session_state.conversation_history:
+        st.subheader("Conversation History")
+        for i, (speaker, message) in enumerate(st.session_state.conversation_history):
+            if speaker == "You":
+                st.markdown(f"**You:** {message}")
+            else:
+                st.markdown(f"**TheraBot ({therapy_mode}):** {message}")
+            if i < len(st.session_state.conversation_history) - 1:
+                st.markdown("---")
     
-    question = st.text_area("What would you like to ask?", height=150)
+    # User input
+    question = st.text_area("What would you like to discuss?", height=150)
     
-    if st.button("Get Response"):
+    if st.button("Send"):
         if not question.strip():
-            st.warning("Please enter a question")
+            st.warning("Please enter a message")
         else:
             today = datetime.now().strftime("%Y-%m-%d")
-            response = answer_ai_therapist_question(question, st.session_state.get('user_id'))
+            response = answer_ai_therapist_question(
+                question, 
+                st.session_state.get('user_id'),
+                therapy_mode
+            )
+            
+            # Add to conversation history
+            st.session_state.conversation_history.append(("You", question))
+            st.session_state.conversation_history.append(("TheraBot", response))
             
             # Store the question and response
             if 'user_id' in st.session_state:
                 c.execute('''INSERT INTO ai_therapist_questions 
-                            (user_id, date, question, response) 
-                            VALUES (?,?,?,?)''',
-                          (st.session_state.user_id, today, question, response))
+                            (user_id, date, question, response, therapy_mode) 
+                            VALUES (?,?,?,?,?)''',
+                          (st.session_state.user_id, today, question, response, therapy_mode))
                 conn.commit()
             
-            st.subheader("AI Response")
-            st.markdown(response)
-            
-            st.markdown("---")
-            st.write("""
-            **Remember:**
-            - This is not medical advice
-            - AI doesn't replace human therapists
-            - For emergencies, use crisis resources
-            - Consider professional help for persistent concerns
-            """)
+            st.rerun()
+    
+    if st.button("Clear Conversation"):
+        st.session_state.conversation_history = []
+        st.rerun()
+    
+    st.markdown("---")
+    st.write("""
+    **Remember:**
+    - This is not medical advice
+    - AI doesn't replace human therapists
+    - For emergencies, use crisis resources
+    - Consider professional help for persistent concerns
+    """)
 
-# Enhanced Self-Care Guidance
+# Enhanced Self-Care Guidance with Specialized Content
 def self_care_guidance():
     st.header("🧘 Self-Care Strategies")
+    
+    user_type, trauma_history = get_user_type(st.session_state.user_id) if 'user_id' in st.session_state else ('general', 0)
     
     tab1, tab2, tab3 = st.tabs(["Quick Relief", "Daily Practices", "Professional Help"])
     
     with tab1:
         st.subheader("Immediate Coping Strategies")
+        
+        if user_type == 'veteran' or trauma_history:
+            st.write("""
+            **For trauma-related distress:**
+            - 🌍 **Orienting Exercise**: 
+              Name 5 things you see, 4 sounds you hear, 3 things you can touch
+            - 🕰️ **Temporal Awareness**: 
+              Remind yourself "That was then, this is now"
+            - 🚶 **Grounding Walk**: 
+              Focus on each step and your surroundings
+            """)
+        
+        if user_type == 'first_responder':
+            st.write("""
+            **For first responder stress:**
+            - 🚨 **Critical Incident Pause**: 
+              After intense calls, take 3 minutes to breathe and transition
+            - 🛡️ **Boundary Visualization**: 
+              Imagine a protective shield between work and personal life
+            - 🤝 **Buddy Check**: 
+              Quick connection with a colleague after tough shifts
+            """)
+        
         st.write("""
         **For acute distress:**
-        - 🌬️ **5-4-3-2-1 Grounding Technique**: 
+        - 🌬️ **5-4-3-2-1 Grounding**: 
           Name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, 1 you taste
         - ❄️ **Temperature Change**: 
           Hold an ice cube or splash cold water on your face
@@ -514,7 +669,7 @@ def self_care_guidance():
         3. Exhale completely through mouth for 8 seconds
         4. Repeat 3-4 times
         
-        **Box Breathing:**
+        **Box Breathing (used by Navy SEALs):**
         1. Inhale for 4 seconds
         2. Hold for 4 seconds
         3. Exhale for 4 seconds
@@ -524,30 +679,37 @@ def self_care_guidance():
     
     with tab2:
         st.subheader("Daily Mental Health Practices")
+        
+        if user_type == 'veteran':
+            st.write("""
+            **For Veterans:**
+            - 🎖️ **Service Connection**: 
+              Maintain bonds with fellow veterans
+            - 🕊️ **Transition Rituals**: 
+              Create routines that mark civilian life
+            - 📅 **Structure**: 
+              Maintain regular daily rhythms
+            """)
+        
+        if user_type == 'first_responder':
+            st.write("""
+            **For First Responders:**
+            - 🔄 **Shift Transition**: 
+              Decompression routine after shifts
+            - 👥 **Peer Support**: 
+              Regular check-ins with colleagues
+            - 🧠 **Mental Rehearsal**: 
+              Visualize handling challenging calls successfully
+            """)
+        
         st.write("""
-        **Morning Routine:**
-        - ☀️ Get sunlight within 1 hour of waking
-        - 💧 Drink a glass of water
-        - 🧘 5 minutes of mindfulness
-        
-        **Evening Routine:**
-        - 📵 Digital detox 1 hour before bed
-        - ✏️ Reflect on 3 good things from your day
-        - 🛌 Consistent sleep schedule
-        
-        **Weekly Practices:**
-        - 🚶‍♂️ Regular physical activity
-        - 🎨 Creative expression
-        - 👥 Social connection
-        """)
-        
-        st.subheader("Nutrition for Mental Health")
-        st.write("""
-        - 🥑 Omega-3 fatty acids (fish, walnuts, flaxseeds)
-        - 🍌 Magnesium-rich foods (leafy greens, nuts, bananas)
-        - 🍫 Limited processed sugars
+        **General Practices:**
+        - ☀️ Morning sunlight exposure
         - 💧 Stay hydrated
-        - ☕ Moderate caffeine
+        - 🚶‍♂️ Regular movement
+        - 🛌 Consistent sleep schedule
+        - 🎨 Creative expression
+        - 👥 Meaningful social connection
         """)
     
     with tab3:
@@ -559,27 +721,29 @@ def self_care_guidance():
         - Significant changes in sleep/appetite
         - Loss of interest in activities
         - Thoughts of self-harm
+        - Trauma symptoms interfering with life
         """)
         
-        st.subheader("Types of Mental Health Professionals")
-        st.write("""
-        - **Psychiatrists**: MDs who can prescribe medication
-        - **Psychologists**: PhDs providing therapy
-        - **LCSWs/LPCs**: Licensed therapists
-        - **Counselors**: Various specialties
-        """)
+        if user_type == 'veteran':
+            st.write("""
+            **Veteran-Specific Resources:**
+            - VA Mental Health Services
+            - Wounded Warrior Project
+            - Give an Hour
+            - Cohen Veterans Network
+            """)
         
-        st.subheader("Therapy Options")
-        st.write("""
-        - **CBT**: Focuses on thought patterns
-        - **DBT**: Emotion regulation skills
-        - **Psychodynamic**: Explores past experiences
-        - **Group Therapy**: Peer support
-        - **Online Therapy**: Convenient access
-        """)
+        if user_type == 'first_responder':
+            st.write("""
+            **First Responder Resources:**
+            - Code Green Campaign
+            - First Responder Support Network
+            - Safe Call Now
+            - CopLine
+            """)
 
+# Enhanced Welcome Page with User Type Selection
 def welcome_page():
-    print(f"[WELCOME PAGE] Logo exists? {logo_base64 is not None}")
     if logo_base64:
         st.markdown(f"""
         <div style="text-align: center;">
@@ -618,10 +782,34 @@ def welcome_page():
                 new_email = st.text_input("Email")
                 new_password = st.text_input("Choose a password", type="password")
                 confirm_password = st.text_input("Confirm password", type="password")
+                
+                user_type = st.radio(
+                    "User Type (optional):",
+                    ["General User", "Veteran/Service Member", "First Responder"],
+                    index=0
+                )
+                
+                trauma_history = st.checkbox(
+                    "I have experienced significant trauma (optional)",
+                    value=False
+                )
+                
                 if st.form_submit_button("Create Account"):
                     if new_password == confirm_password:
                         try:
-                            user_id = create_user(new_username, new_password, new_email)
+                            user_type_db = {
+                                "General User": "general",
+                                "Veteran/Service Member": "veteran",
+                                "First Responder": "first_responder"
+                            }[user_type]
+                            
+                            user_id = create_user(
+                                new_username, 
+                                new_password, 
+                                new_email,
+                                user_type_db,
+                                1 if trauma_history else 0
+                            )
                             st.session_state.user_id = user_id
                             st.session_state.username = new_username
                             st.success("Account created successfully!")
@@ -631,8 +819,17 @@ def welcome_page():
                     else:
                         st.error("Passwords don't match")
     else:
-        st.header(f"Welcome back, {st.session_state.get('username', 'Guest')}!")
+        user_type, trauma_history = get_user_type(st.session_state.user_id)
+        
+        welcome_title = f"Welcome back, {st.session_state.get('username', 'Guest')}!"
+        if user_type == 'veteran':
+            welcome_title += " 🎖️"
+        elif user_type == 'first_responder':
+            welcome_title += " 🚨"
+            
+        st.header(welcome_title)
         st.write("How would you like to engage today?")
+        
         # AI-generated personalized greeting
         ai_response = generate_ai_response(st.session_state.user_id)
         st.info(f"**TheraBot:** {ai_response}")
@@ -669,68 +866,18 @@ def welcome_page():
             conn.commit()
             st.success("Mood logged!")
 
-# Enhanced Mood Scale with tracking
-def mood_scale():
-    st.header("📊 Mood Tracker")
-    
-    today = datetime.now().strftime("%Y-%m-%d")
-    
-    # Check if mood already logged today
-    c.execute('SELECT mood, note FROM mood_entries WHERE user_id = ? AND date = ?',
-              (st.session_state.user_id, today))
-    existing_entry = c.fetchone()
-    
-    if existing_entry:
-        st.success(f"You already logged your mood today: {existing_entry[0]}/10")
-        if existing_entry[1]:
-            st.write(f"Note: {existing_entry[1]}")
-        if st.button("Update today's mood"):
-            c.execute('DELETE FROM mood_entries WHERE user_id = ? AND date = ?',
-                      (st.session_state.user_id, today))
-            conn.commit()
-            st.rerun()
-    else:
-        mood = st.slider("Rate your mood (0 = Very Low, 10 = Excellent)", 0, 10, 5)
-        note = st.text_area("Optional notes about your mood:")
-        
-        if st.button("Log Mood"):
-            c.execute('INSERT INTO mood_entries (user_id, date, mood, note) VALUES (?,?,?,?)',
-                      (st.session_state.user_id, today, mood, note))
-            conn.commit()
-            
-            # AI response based on mood
-            if mood <= 3:
-                response = "I hear you're feeling pretty low right now. That's really tough. 💙"
-                st.markdown("### You might find these helpful:")
-                with st.expander("Coping Strategies for Low Mood"):
-                    st.write("""
-                    - Try a grounding exercise (see Self-Care section)
-                    - Reach out to someone you trust
-                    - Engage in a small, manageable activity
-                    - Be gentle with yourself - moods naturally fluctuate
-                    """)
-            elif mood <= 6:
-                response = "Thanks for checking in. Middle-of-the-road days are normal. Maybe we can find a small boost? ✨"
-            else:
-                response = "That's wonderful to hear! Let's build on this positive energy! 🌟"
-            
-            st.success(f"**TheraBot:** {response}\n\nMood logged successfully!")
-            st.balloons() if mood >= 8 else None
-    
-    # Mood history visualization
-    st.subheader("Your Mood History")
-    mood_fig = plot_mood_trend(st.session_state.user_id)
-    if mood_fig:
-        st.pyplot(mood_fig)
-    else:
-        st.info("Log more moods to see your trends over time")
+
+# ... (previous imports and database setup remain the same until journal_entry function)
 
 # Enhanced Journal with AI memory
 def journal_entry():
     st.header("📝 Reflective Journal")
     
-    # Journal prompt generator
-    prompts = [
+    # Get user type for personalized responses
+    user_type, trauma_history = get_user_type(st.session_state.user_id)
+    
+    # Journal prompt generator - now with personalized prompts
+    base_prompts = [
         "What's been on your mind lately?",
         "What are you grateful for today?",
         "Describe a challenge you're facing and how you might approach it",
@@ -738,6 +885,34 @@ def journal_entry():
         "Write a letter to your future self",
         "What emotions have you felt most strongly this week?"
     ]
+    
+    veteran_prompts = [
+        "How has your service experience influenced your perspective today?",
+        "What strengths from your service help you in civilian life?",
+        "Describe a transition challenge and how you're adapting",
+        "What does 'service' mean to you now?"
+    ]
+    
+    first_responder_prompts = [
+        "How do you decompress after difficult shifts?",
+        "What lessons from emergency response apply to daily life?",
+        "Describe a work experience that changed your perspective",
+        "How do you maintain boundaries between work and personal life?"
+    ]
+    
+    trauma_prompts = [
+        "What helps you feel grounded when recalling difficult experiences?",
+        "How have you grown from past challenges?",
+        "What's one way you've learned to care for yourself when triggered?"
+    ]
+    
+    # Combine prompts based on user type
+    if user_type == 'veteran':
+        prompts = veteran_prompts + trauma_prompts if trauma_history else veteran_prompts + base_prompts
+    elif user_type == 'first_responder':
+        prompts = first_responder_prompts + trauma_prompts if trauma_history else first_responder_prompts + base_prompts
+    else:
+        prompts = trauma_prompts + base_prompts if trauma_history else base_prompts
     
     selected_prompt = st.selectbox("Choose a journal prompt or write freely:", 
                                   ["Free writing"] + prompts)
@@ -758,13 +933,27 @@ def journal_entry():
                       (st.session_state.user_id, today, entry, sentiment))
             conn.commit()
             
-            # AI response based on content
-            if sentiment > 0.2:
-                ai_response = "I notice positive tones in your writing. Celebrate these moments!"
-            elif sentiment < -0.2:
-                ai_response = "Your words reflect some difficulty. Remember, writing about challenges is already a step toward processing them."
+            # Enhanced AI response based on user type and content
+            if user_type == 'veteran':
+                base_response = "Thank you for your service. "
+                if "service" in entry.lower() or "military" in entry.lower():
+                    base_response += "Your military experience has shaped who you are today. "
+            elif user_type == 'first_responder':
+                base_response = "Your work makes a profound difference. "
+                if "shift" in entry.lower() or "call" in entry.lower():
+                    base_response += "The challenges of first response work are unique. "
             else:
-                ai_response = "Thank you for sharing these reflections. Regular journaling builds self-awareness."
+                base_response = ""
+            
+            if sentiment > 0.2:
+                ai_response = base_response + "I notice positive tones in your writing. Celebrate these moments!"
+            elif sentiment < -0.2:
+                if trauma_history or any(word in entry.lower() for word in ['trauma', 'ptsd', 'trigger']):
+                    ai_response = base_response + "Your words reflect difficult experiences. The VA and other organizations offer specialized support for trauma healing."
+                else:
+                    ai_response = base_response + "Your words reflect some difficulty. Remember, writing about challenges is already a step toward processing them."
+            else:
+                ai_response = base_response + "Thank you for sharing these reflections. Regular journaling builds self-awareness."
             
             st.success(f"**TheraBot:** {ai_response}\n\nJournal saved!")
             
@@ -774,7 +963,11 @@ def journal_entry():
             prev_entry = c.fetchone()
             
             if prev_entry:
-                st.info("**Connection to previous entry:** You might reflect on how this relates to what you wrote before.")
+                common_words = set(entry.lower().split()) & set(prev_entry[0].lower().split())
+                if common_words:
+                    st.info(f"**Connection to previous entry:** You mentioned similar themes about {', '.join(common_words)}.")
+
+# ... (rest of the code remains the same)
 
 # Enhanced Self-Care Library with tracking
 def self_care_library():
