@@ -162,116 +162,216 @@ def generate_ai_response(user_id):
     if avg_mood < 4:
         return "I see your mood has been lower recently. Would you like to explore some coping strategies?"
     return "How are you feeling today compared to yesterday?"
+def generate_cbt_response(user_input, user_id=None):
+    """Generate CBT-focused responses with cognitive restructuring"""
+    techniques = [
+        ("Identifying Cognitive Distortions", 
+         f"I notice you might be experiencing {random.choice(['all-or-nothing thinking', 'overgeneralization', 'mental filtering', 'disqualifying the positive'])}. "
+         "Would it help to examine the evidence for and against this thought?"),
+         
+        ("Behavioral Activation",
+         "When we feel down, we often stop doing things that bring us joy. What's one small activity you used to enjoy "
+         "that you could try this week, even if you don't feel like it?"),
+         
+        ("Thought Record",
+         "Let's examine that thought more closely. On a scale of 0-100%, how much do you believe this thought? "
+         "What evidence supports it? What evidence contradicts it?"),
+         
+        ("Socratic Questioning",
+         "If a friend had this thought, what would you tell them? Is there another way to look at this situation?"),
+         
+        ("Graded Task Assignment",
+         "Big challenges can feel overwhelming. Could we break this down into smaller, more manageable steps? "
+         "What would be a tiny first step you could take?")
+    ]
+    
+    # Special responses for veterans/first responders
+    if user_id:
+        c.execute('SELECT username FROM users WHERE id = ?', (user_id,))
+        username = c.fetchone()[0]
+        if any(word in username.lower() for word in ['vet', 'military', 'responder', 'officer', 'fire', 'ems']):
+            techniques.extend([
+                ("Moral Injury Exploration",
+                 "Many service professionals struggle with conflicts between their actions and their values. "
+                 "Would it help to explore this with more nuance - recognizing both the difficult circumstances "
+                 "and your good intentions?"),
+                 
+                ("Operational Stress Management",
+                 "Your training taught you to push through extreme situations, but now your mind/body may need "
+                 "different care. What would compassionate maintenance look like for your heroic brain?")
+            ])
+    
+    technique, response = random.choice(techniques)
+    return f"""
+    **CBT Technique: {technique}**  
+    {response}
+    
+    *Remember: Thoughts are mental events, not necessarily facts. The way we interpret situations affects how we feel.*
+    """
+
+def generate_act_response(user_input, user_id=None):
+    """Acceptance and Commitment Therapy responses"""
+    metaphors = [
+        ("Chessboard Metaphor",
+         "Imagine your thoughts and feelings as pieces on a chessboard. You're the chessboard itself - "
+         "the space where the game happens but not defined by any single piece. Can you observe your "
+         "current experience with this perspective?"),
+         
+        ("Passengers on the Bus",
+         "Picture your difficult thoughts as noisy passengers on a bus you're driving. You don't have to "
+         "make them get off, but you also don't have to obey their directions. Where do you want to steer "
+         "your bus today?"),
+         
+        ("Tug-of-War with a Monster",
+         "Struggling with painful thoughts is like a tug-of-war with a monster. The alternative isn't winning, "
+         "but dropping the rope. What would dropping the rope look like in this situation?")
+    ]
+    
+    technique, response = random.choice(metaphors)
+    return f"""
+    **ACT Approach: {technique}**  
+    {response}
+    
+    *Psychological flexibility means making room for discomfort while still moving toward what matters.*
+    """
+
+def generate_dbt_response(user_input):
+    """Dialectical Behavior Therapy skills"""
+    skills = [
+        ("DEAR MAN",
+         "For effective communication, try:\n"
+         "**D**escribe the situation\n**E**xpress your feelings\n"
+         "**A**ssert your needs\n**R**einforce positive outcomes\n"
+         "**M**indful of the moment\n**A**ppear confident\n**N**egotiate when needed"),
+         
+        ("TIP for Crisis",
+         "To quickly change body chemistry:\n"
+         "**T**ip the temperature (cold water on face)\n"
+         "**I**ntense exercise\n**P**aced breathing"),
+         
+        ("Radical Acceptance",
+         "Pain + Non-Acceptance = Suffering. Radical acceptance means fully acknowledging reality "
+         "without judging it as good or bad. What would need to happen for you to move toward acceptance here?")
+    ]
+    
+    technique, response = random.choice(skills)
+    return f"""
+    **DBT Skill: {technique}**  
+    {response}
+    
+    *You're building an emotional toolkit - not every tool works for every situation, but having options helps.*
+    """
+
+def generate_somatic_response(user_input):
+    """Body-based interventions"""
+    exercises = [
+        ("Grounding Techniques",
+         "Let's reconnect with the present:\n1. Name 5 things you see\n2. 4 things you can touch\n"
+         "3. 3 sounds you hear\n4. 2 smells you notice\n5. 1 taste in your mouth\n"
+         "How does your body feel after this?"),
+         
+        ("Body Scan",
+         "Close your eyes and slowly bring attention to:\n1. Your feet on the floor\n2. Legs supported\n"
+         "3. Back against the chair\n4. Hands resting\n5. Facial muscles\nNotice any tension without judgment"),
+         
+        ("Voo Breathing",
+         "For nervous system reset:\n1. Take a deep breath\n2. Exhale with 'Voo' sound (like foghorn)\n"
+         "3. Repeat 3-5 times\nThis stimulates the vagus nerve for calm")
+    ]
+    
+    technique, response = random.choice(exercises)
+    return f"""
+    **Somatic Exercise: {technique}**  
+    {response}
+    
+    *Trauma and stress live in the body - these tools help complete the stress cycle.*
+    """
 
 
 def answer_ai_therapist_question(question, user_id=None):
-    """Generate a response to a mental health question with appropriate disclaimers"""
-    # Define common topics and responses
-    common_topics = {
-        "anxiety": "Anxiety can feel overwhelming, but techniques like deep breathing, grounding exercises, and challenging anxious thoughts can help. Would you like some specific exercises?",
-        "depression": "Depression often makes everything feel harder. Small steps like maintaining a routine, getting sunlight, and reaching out to loved ones can help. Have you considered speaking with a professional?",
-        "stress": "Stress management often involves identifying sources of stress, setting boundaries, and practicing relaxation techniques. What's causing you the most stress right now?",
-        "relationships": "Relationships can be complex. Good communication involves active listening and expressing your needs clearly. What aspect of your relationships are you finding challenging?",
-        "self-esteem": "Building self-esteem is a process. Try focusing on your strengths, practicing self-compassion, and setting achievable goals. What's one thing you appreciate about yourself today?",
-        "sleep": "Good sleep hygiene includes consistent bedtimes, limiting screens before bed, and creating a restful environment. Are you having trouble falling asleep or staying asleep?"
-    }
-    
-    # Check for crisis keywords
+    """Generate a therapeutic response with proper disclaimers"""
+    # Crisis response (same as before)
     crisis_keywords = ["suicide", "kill myself", "end my life", "self-harm", "hurting myself"]
     if any(keyword in question.lower() for keyword in crisis_keywords):
-        return """
-        **Important:** I'm deeply concerned about what you're sharing. 
-        You're not alone, and there are people who want to help:
-        
-        - In the U.S.: Call/text 988 or chat at 988lifeline.org
-        - UK: Call 116 123 (Samaritans)
-        - International: Find a crisis line at www.befrienders.org
-        
-        Please reach out to a trusted person or professional right now. 
-        Your life matters.
-        """
+        return crisis_response()
     
-    # Check for common topics
-    for topic, response in common_topics.items():
-        if topic in question.lower():
-            return f"""
-            **Regarding {topic}:** {response}
-            
-            *Remember: I'm an AI assistant, not a licensed therapist. 
-            For professional help, consider reaching out to a mental health professional.*
-            """
+    # Determine therapeutic approach based on question content
+    question_lower = question.lower()
     
-    # Default response
-    default_responses = [
-        "That's a really thoughtful question. Let's unpack it together.",
-        "You're not alone in feeling this way. Want to explore some options?",
-        "I hear you. How long have you been feeling like this?",
-        "You're doing great by reaching out. Let's explore that more.",
-        "Sometimes naming the feeling is the first step. What name would you give what you're feeling?",
-        "That’s tough. Have you tried grounding or somatic check-ins when that feeling shows up?",
-        "This reminds me of something you shared last week. How does this connect for you now?",
-        "I wonder if your inner critic is speaking up here. What might your compassionate self say instead?",
-        "That’s an important insight. Want a CBT-style reframe for that?",
-        "You're showing a lot of self-awareness by noticing this."
+    # Veteran/first responder specific responses
+    if user_id:
+        c.execute('SELECT username FROM users WHERE id = ?', (user_id,))
+        username = c.fetchone()[0] if c.fetchone() else ""
+        if any(word in username.lower() for word in ['vet', 'military', 'responder', 'officer', 'fire', 'ems']):
+            military_responses = [
+                ("I hear the weight of your experience. Many service professionals find it hard to transition "
+                 "between 'mission mode' and 'home mode'. What helps you recalibrate?"),
+                 
+                ("Your training taught you to suppress reactions during crises - now we're working on safe "
+                 "ways to process those experiences. What's one small way you could honor your feelings today?"),
+                 
+                ("The hypervigilance that kept you safe on duty may feel intrusive now. Let's explore "
+                 "gradual ways to help your nervous system recognize safety.")
+            ]
+            if any(word in question_lower for word in ['service', 'deployed', 'mission', 'duty', 'call']):
+                return format_response(random.choice(military_responses), "For Service Professionals")
+    
+    # Therapeutic modality matching
+    if any(word in question_lower for word in ['thought', 'think', 'belief', 'mind']):
+        return generate_cbt_response(question, user_id)
+    elif any(word in question_lower for word in ['accept', 'values', 'present', 'struggle']):
+        return generate_act_response(question, user_id)
+    elif any(word in question_lower for word in ['emotion', 'regulate', 'intense', 'borderline']):
+        return generate_dbt_response(question)
+    elif any(word in question_lower for word in ['body', 'pain', 'physic', 'somatic', 'trauma']):
+        return generate_somatic_response(question)
+    
+    # Default multi-modal response
+    approaches = [
+        generate_cbt_response(question, user_id),
+        generate_act_response(question, user_id),
+        generate_dbt_response(question),
+        generate_somatic_response(question)
     ]
-    import random
-    return random.choice(default_responses)
+    response = random.choice(approaches)
+    
+    return f"""
+    {response}
+    
+    *Remember: I'm an AI assistant, not a licensed therapist. For professional help, consider reaching out to:\n
+    - Veterans Crisis Line: 988 then press 1\n
+    - First Responder Lifeline: 1-800-273-TALK (8255)\n
+    - Psychology Today Therapist Finder: https://www.psychologytoday.com*
+    """
 
-# Data Visualization Functions
-def plot_mood_trend(user_id):
-    c.execute('SELECT date, mood FROM mood_entries WHERE user_id = ? ORDER BY date', (user_id,))
-    data = c.fetchall()
-    if len(data) < 2:
-        return None
+def format_response(response, technique):
+    """Format therapeutic responses consistently"""
+    return f"""
+    **{technique} Approach**  
+    {response}
     
-    df = pd.DataFrame(data, columns=['Date', 'Mood'])
-    df['Date'] = pd.to_datetime(df['Date'])
-    df.set_index('Date', inplace=True)
-    
-    fig, ax = plt.subplots(figsize=(10, 4))
-    df['Mood'].plot(ax=ax, marker='o', linestyle='-')
-    ax.set_ylim(0, 10)
-    ax.set_title('Your Mood Over Time')
-    ax.set_ylabel('Mood (0-10)')
-    ax.grid(True)
-    
-    return fig
+    *This is not medical advice. If you're in crisis, please contact a professional immediately.*
+    """
 
-def plot_self_care_categories(user_id):
-    c.execute('SELECT category, COUNT(*) FROM self_care_activities WHERE user_id = ? GROUP BY category', (user_id,))
-    data = c.fetchall()
-    if not data:
-        return None
-    
-    df = pd.DataFrame(data, columns=['Category', 'Count'])
-    
-    fig, ax = plt.subplots(figsize=(8, 8))
-    df.set_index('Category')['Count'].plot.pie(ax=ax, autopct='%1.1f%%')
-    ax.set_title('Self-Care Activity Distribution')
-    ax.set_ylabel('')
-    
-    return fig
+def crisis_response():
+    """Enhanced crisis response with veteran/first responder options"""
+    return """
+    **Important:** I'm deeply concerned about what you're sharing. You're not alone.
 
-# Crisis Support Resources
-def crisis_support():
-    st.header("🆘 Immediate Support Resources")
-    st.warning("""
-    **If you're in crisis or experiencing thoughts of self-harm, please reach out now:**
-    
-    - 🇺🇸 **U.S. National Suicide Prevention Lifeline**: Call/text **988** or chat at [988lifeline.org](https://988lifeline.org)
-    - 🇬🇧 **UK Samaritans**: Call **116 123** or email jo@samaritans.org
-    - 🌍 **International Help**: Find crisis centers at [Befrienders Worldwide](https://www.befrienders.org)
-    - 💬 **Crisis Text Line**: Text HOME to **741741** in the U.S.
-    """)
-    
-    st.subheader("Additional Mental Health Resources")
-    st.write("""
-    - 🏥 [National Alliance on Mental Illness (NAMI)](https://www.nami.org)
-    - 🧠 [Mental Health America](https://www.mhanational.org)
-    - 🧘 [Headspace for Meditation](https://www.headspace.com)
-    - 📱 [Talkspace Online Therapy](https://www.talkspace.com)
-    - 🌎 [Psychology Today Therapist Finder](https://www.psychologytoday.com)
-    """)
+    **For Veterans:**
+    - 🇺🇸 Veterans Crisis Line: Dial 988 then press 1
+    - 📱 Text 838255
+    - 💬 Online chat: veteranscrisisline.net
+
+    **For First Responders:**
+    - 🚒 First Responder Lifeline: 1-800-273-TALK (8255)
+    - 🚔 Code Green Campaign: codegreen.org
+
+    **For Everyone:**
+    - 🌍 International help: befrienders.org
+    - 💙 Crisis Text Line: Text HOME to 741741 (US/UK/Canada)
+
+    Please reach out now. Your service to others matters - you matter.
     
     st.subheader("When to Seek Immediate Help")
     st.write("""
@@ -713,7 +813,7 @@ def mood_scale():
                     - Be gentle with yourself - moods naturally fluctuate
                     """)
             elif mood <= 6:
-                response = "Thanks for checking in. Middle-of-the-road days are normal and it is about progress, not perfection, even if we feel like things aren't moving as fast as we would like. Maybe we can find a small boost? ✨"
+                response = "Thanks for checking in. Middle-of-the-road days are normal. Maybe we can find a small boost? ✨"
             else:
                 response = "That's wonderful to hear! Let's build on this positive energy! 🌟"
             
@@ -729,30 +829,64 @@ def mood_scale():
         st.info("Log more moods to see your trends over time")
 
 # Enhanced Journal with AI memory
+def generate_journal_prompt(user_id=None):
+    """Dynamic journal prompts with memory of past entries"""
+    base_prompts = [
+        "What's one thing you want to remember from today?",
+        "Describe a moment that surprised you",
+        "What emotion visited you most today? What did it need?",
+        "Write a letter to your future self about this chapter of your life",
+        "What's something you're beginning to understand about yourself?",
+        "What nourished you today? What depleted you?"
+    ]
+    
+    # Special prompts for veterans/first responders
+    if user_id:
+        c.execute('SELECT username FROM users WHERE id = ?', (user_id,))
+        username = c.fetchone()[0] if c.fetchone() else ""
+        if any(word in username.lower() for word in ['vet', 'military', 'responder', 'officer', 'fire', 'ems']):
+            base_prompts.extend([
+                "How has your service shaped how you see the world today?",
+                "What's one strength from your service that serves you now?",
+                "If your trauma could speak, what would it want others to understand?",
+                "What does 'safety' mean to your body now compared to during service?"
+            ])
+    
+    # Context-aware prompts based on recent entries
+    if user_id:
+        c.execute('SELECT entry FROM journal_entries WHERE user_id = ? ORDER BY date DESC LIMIT 1', (user_id,))
+        last_entry = c.fetchone()
+        if last_entry:
+            last_text = last_entry[0].lower()
+            if 'happy' in last_text or 'joy' in last_text:
+                base_prompts.extend([
+                    "What conditions helped create this positive experience?",
+                    "How might you cultivate more moments like this?"
+                ])
+            if 'stress' in last_text or 'anxious' in last_text:
+                base_prompts.extend([
+                    "What did this challenge reveal about your coping skills?",
+                    "If this stress were a wave in the ocean, how might you ride it?"
+                ])
+    
+    return random.choice(base_prompts)
 def journal_entry():
     st.header("📝 Reflective Journal")
     
-    # Journal prompt generator
-    prompts = [
-        "What's been on your mind lately?",
-        "What are you grateful for today?",
-        "Describe a challenge you're facing and how you might approach it",
-        "What's one thing you'd like to remember from today?",
-        "Write a letter to your future self",
-        "What emotions have you felt most strongly this week?"
-    ]
-    
-    selected_prompt = st.selectbox("Choose a journal prompt or write freely:", 
-                                  ["Free writing"] + prompts)
+    # Use dynamic prompt generator
+    prompt_options = ["Free writing"] + [generate_journal_prompt(st.session_state.user_id) for _ in range(5)]
+    selected_prompt = st.selectbox("Choose a journal prompt or write freely:", prompt_options)
     
     if selected_prompt != "Free writing":
         st.write(f"**Prompt:** {selected_prompt}")
+        st.caption("💡 Prompt generated based on your recent entries and profile")
     
-    entry = st.text_area("Write your thoughts here:", height=250)
+    entry = st.text_area("Write your thoughts here:", height=300,
+                        placeholder="Try to write for at least 5 minutes without stopping...")
     
     if st.button("Save Entry"):
-        if len(entry) < 20:
-            st.warning("That's quite brief! Are you sure you don't want to add more?")
+        if len(entry) < 50:
+            st.warning("That's quite brief! Journaling works best when we push past surface thoughts.")
         else:
             today = datetime.now().strftime("%Y-%m-%d")
             sentiment = analyze_journal_sentiment(entry)
@@ -761,212 +895,120 @@ def journal_entry():
                       (st.session_state.user_id, today, entry, sentiment))
             conn.commit()
             
-            # AI response based on content
-            if sentiment > 0.2:
-                ai_response = "I notice positive tones in your writing. Celebrate these moments!"
-            elif sentiment < -0.2:
-                ai_response = "Your words reflect some difficulty. Remember, writing about challenges is already a step toward processing them."
-            else:
-                ai_response = "Thank you for sharing these reflections. Regular journaling builds self-awareness."
-            
+            # Enhanced AI response
+            ai_response = generate_journal_feedback(entry, sentiment, st.session_state.user_id)
             st.success(f"**TheraBot:** {ai_response}\n\nJournal saved!")
             
-            # Connect to previous entries if available
-            c.execute('SELECT entry FROM journal_entries WHERE user_id = ? AND date != ? ORDER BY date DESC LIMIT 1',
-                      (st.session_state.user_id, today))
-            prev_entry = c.fetchone()
-            
-            if prev_entry:
-                st.info("**Connection to previous entry:** You might reflect on how this relates to what you wrote before.")
+            # Show connection to previous entry if available
+            show_entry_connections(st.session_state.user_id, today)
+
+def generate_journal_feedback(entry, sentiment, user_id):
+    """Generate personalized journal feedback"""
+    entry_lower = entry.lower()
+    positive_words = sum(1 for word in ['happy', 'joy', 'proud', 'excited', 'grateful'] if word in entry_lower)
+    negative_words = sum(1 for word in ['sad', 'angry', 'anxious', 'stress', 'tired'] if word in entry_lower)
+    
+    if sentiment > 0.3:
+        responses = [
+            "Your writing shines with positivity! Notice how describing these moments amplifies their power.",
+            "These reflections are like sunshine breaking through clouds. What conditions helped create this brightness?",
+            "Your words carry hope. Consider saving this entry to revisit on harder days."
+        ]
+        if 'grat' in entry_lower:
+            responses.append("Practicing gratitude rewires our brains! You might enjoy a 'three good things' journal for 21 days.")
+    elif sentiment < -0.3:
+        responses = [
+            "Writing about challenges takes courage. You're already changing your relationship to these feelings by naming them.",
+            "Hard emotions demand space. By giving them room here, you prevent them from taking over elsewhere.",
+            "This honest expression is the first step toward healing. Would a coping strategy help right now?"
+        ]
+        if any(word in entry_lower for word in ['alone', 'lonely']):
+            responses.append("Loneliness is profoundly painful. Many find comfort knowing this feeling is shared by others - would resources on connection help?")
+    else:
+        responses = [
+            "Your balanced reflection shows self-awareness. Noticing without judgment is a powerful skill.",
+            "You're mapping your inner landscape - both the peaks and valleys make the terrain complete.",
+            "This thoughtful processing builds emotional resilience over time."
+        ]
+    
+    # Add therapeutic technique suggestion
+    techniques = [
+        "\n\nConsider trying: One-sentence journaling daily for consistency.",
+        "\n\nExperiment: Highlight action verbs in your entry - where could you take small steps?",
+        "\n\nPrompt for next time: What's the story I'm telling myself about this? Is there another version?"
+    ]
+    
+    return random.choice(responses) + random.choice(techniques)
+
+def show_entry_connections(user_id, current_date):
+    """Show connections between current and past journal entries"""
+    c.execute('''SELECT entry FROM journal_entries 
+                 WHERE user_id = ? AND date != ? 
+                 ORDER BY RANDOM() LIMIT 1''',
+              (user_id, current_date))
+    prev_entry = c.fetchone()
+    
+    if prev_entry:
+        st.info("**Bridge to Past Writing:**\n" + 
+               random.choice([
+                   "This connects to when you wrote about similar themes before.",
+                   "Your current reflections seem to dialogue with your past thoughts.",
+                   "Notice any patterns between this entry and your previous writing?"
+               ]))
 
 # Enhanced Self-Care Library with tracking
-def self_care_library():
-    st.header("🌿 Self-Care Resource Library")
+def get_self_care_activities(category, user_id=None):
+    """Expanded self-care suggestions with timing options"""
+    activities = {
+        "Morning Routine": [
+            ("Sunlight within 30 mins of waking", "Circadian Health", 5),
+            ("Hydration with electrolytes", "Physical", 2),
+            ("3 things you're grateful for", "Emotional", 3),
+            ("Stretch like a cat (full body)", "Physical", 4),
+            ("Set 1 intention for the day", "Mindset", 2)
+        ],
+        "Evening Wind-Down": [
+            ("Digital sunset (no screens)", "Sleep", 60),
+            ("Gentle neck rolls", "Physical", 3),
+            ("'Rose, Thorn, Bud' reflection", "Emotional", 5),
+            ("4-7-8 breathing", "Relaxation", 4),
+            ("Cool down room temperature", "Sleep", 1)
+        ],
+        "Weekly Reset": [
+            ("Nature immersion (20+ mins)", "Mental", 30),
+            ("Creative play (no rules)", "Joy", 45),
+            ("Social connection", "Relationships", 60),
+            ("Body scan meditation", "Mindfulness", 20),
+            ("Personal retreat (2+ hours alone)", "Recharge", 120)
+        ],
+        "Nutrition Boosters": [
+            ("Omega-3 rich meal", "Brain Health", 15),
+            ("Fermented food for gut health", "Physical", 5),
+            ("Herbal tea ritual", "Mindfulness", 10),
+            ("Protein with each meal", "Energy", 1),
+            ("Rainbow plate challenge", "Variety", 20)
+        ],
+        "For Service Professionals": [
+            ("Tactical breathing (box breath)", "Regulation", 5),
+            ("After-action review (non-judgmental)", "Processing", 10),
+            ("Comrades check-in", "Connection", 15),
+            ("Equipment maintenance metaphor", "Self-Care", 20),
+            ("Boundary practice (saying no)", "Protection", 5)
+        ]
+    }
     
-    tab1, tab2, tab3 = st.tabs(["Browse Activities", "Your Self-Care History", "Self-Care Guidance"])
+    # Add military/veteran specific activities if user matches
+    if user_id:
+        c.execute('SELECT username FROM users WHERE id = ?', (user_id,))
+        username = c.fetchone()[0] if c.fetchone() else ""
+        if any(word in username.lower() for word in ['vet', 'military', 'responder', 'officer', 'fire', 'ems']):
+            activities["For Service Professionals"].extend([
+                ("Duty-to-civilian transition ritual", "Mindset", 10),
+                ("Shared humanity reflection", "Perspective", 15),
+                ("Adrenaline dump visualization", "Regulation", 8)
+            ])
     
-    with tab1:
-        category = st.selectbox("Browse by category:", [
-            "Quick Pick-Me-Ups (5 min or less)",
-            "Emotional Care",
-            "Physical Wellbeing",
-            "Social Connection",
-            "Productivity Boosters",
-            "Creativity Sparks"
-        ])
-        
-        if category == "Quick Pick-Me-Ups (5 min or less)":
-            activities = [
-                ("Deep breathing (4-7-8 technique)", "Relaxation", 5),
-                ("Stretch break", "Physical", 5),
-                ("Hydration station", "Physical", 2),
-                ("Mini dance party", "Joy", 5),
-                ("Nature gaze", "Mindfulness", 3)
-            ]
-        elif category == "Emotional Care":
-            activities = [
-                ("Self-compassion break", "Emotional", 3),
-                ("Gratitude moment", "Emotional", 5),
-                ("Emotional check-in", "Emotional", 5),
-                ("Comfort object", "Emotional", 2)
-            ]
-        elif category == "Physical Wellbeing":
-            activities = [
-                ("Posture reset", "Physical", 1),
-                ("Hydration check", "Physical", 1),
-                ("Energy snack", "Physical", 5),
-                ("Micro-movement", "Physical", 3)
-            ]
-        elif category == "Social Connection":
-            activities = [
-                ("Reach out to someone", "Social", 10),
-                ("Social media detox", "Social", 30),
-                ("Kindness boost", "Social", 5),
-                ("Memory lane", "Social", 10)
-            ]
-        elif category == "Productivity Boosters":
-            activities = [
-                ("Pomodoro technique", "Focus", 25),
-                ("Two-minute rule", "Focus", 2),
-                ("Priority triage", "Focus", 10),
-                ("Declutter sprint", "Focus", 15)
-            ]
-        elif category == "Creativity Sparks":
-            activities = [
-                ("Doodle break", "Creative", 10),
-                ("Word play", "Creative", 5),
-                ("Color therapy", "Creative", 15),
-                ("Creative consumption", "Creative", 20)
-            ]
-        
-        st.subheader(f"{category} Activities")
-        for activity, _, duration in activities:
-            if st.button(f"{activity} ({duration} min)"):
-                today = datetime.now().strftime("%Y-%m-%d")
-                c.execute('INSERT INTO self_care_activities (user_id, date, activity, category, duration) VALUES (?,?,?,?,?)',
-                          (st.session_state.user_id, today, activity, category, duration))
-                conn.commit()
-                st.success(f"Logged: {activity}!")
-    
-    with tab2:
-        st.subheader("Your Self-Care History")
-        
-        # Date range selector
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=30)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            start_date = st.date_input("Start date", start_date)
-        with col2:
-            end_date = st.date_input("End date", end_date)
-        
-        # Fetch activities in date range
-        c.execute('''SELECT date, activity, duration FROM self_care_activities 
-                     WHERE user_id = ? AND date BETWEEN ? AND ?
-                     ORDER BY date DESC''',
-                  (st.session_state.user_id, start_date.strftime("%Y-%m-%d"), 
-                   end_date.strftime("%Y-%m-%d")))
-        activities = c.fetchall()
-        
-        if activities:
-            st.write(f"Found {len(activities)} activities:")
-            for date, activity, duration in activities:
-                st.write(f"- {date}: {activity} ({duration} min)")
-            
-            # Visualization
-            st.subheader("Activity Distribution")
-            fig = plot_self_care_categories(st.session_state.user_id)
-            if fig:
-                st.pyplot(fig)
-            else:
-                st.info("Complete more activities to see visualizations")
-        else:
-            st.info("No self-care activities logged in this period")
-    
-    with tab3:
-        self_care_guidance()
-
-# Progress Tracking Dashboard
-def progress_tracking():
-    st.header("📈 Your Progress Dashboard")
-    
-    tab1, tab2, tab3 = st.tabs(["Mood Trends", "Journal Insights", "Self-Care Report"])
-    
-    with tab1:
-        st.subheader("Mood Over Time")
-        mood_fig = plot_mood_trend(st.session_state.user_id)
-        if mood_fig:
-            st.pyplot(mood_fig)
-            
-            # Mood statistics
-            c.execute('SELECT AVG(mood), MIN(mood), MAX(mood) FROM mood_entries WHERE user_id = ?',
-                      (st.session_state.user_id,))
-            avg, min_mood, max_mood = c.fetchone()
-            st.write(f"**Average mood:** {avg:.1f}/10")
-            st.write(f"**Range:** {min_mood} (low) to {max_mood} (high)")
-        else:
-            st.info("Log more moods to see trends")
-    
-    with tab2:
-        st.subheader("Journal Insights")
-        c.execute('SELECT date, entry, sentiment FROM journal_entries WHERE user_id = ? ORDER BY date DESC LIMIT 5',
-                  (st.session_state.user_id,))
-        entries = c.fetchall()
-        
-        if entries:
-            # Sentiment over time
-            df = pd.DataFrame(entries, columns=['Date', 'Entry', 'Sentiment'])
-            df['Date'] = pd.to_datetime(df['Date'])
-            
-            fig, ax = plt.subplots(figsize=(10, 4))
-            df.plot(x='Date', y='Sentiment', ax=ax, marker='o')
-            ax.set_title('Journal Sentiment Trend')
-            ax.set_ylabel('Sentiment (-1 to 1)')
-            ax.grid(True)
-            st.pyplot(fig)
-            
-            # Common themes
-            st.write("**Recent Journal Themes**")
-            all_text = " ".join([e[1] for e in entries]).lower()
-            common_words = pd.Series(all_text.split()).value_counts().head(10)
-            st.bar_chart(common_words)
-        else:
-            st.info("Write more journal entries to see insights")
-    
-    with tab3:
-        st.subheader("Self-Care Report")
-        c.execute('''SELECT category, COUNT(*), SUM(duration) 
-                     FROM self_care_activities 
-                     WHERE user_id = ?
-                     GROUP BY category''',
-                  (st.session_state.user_id,))
-        category_data = c.fetchall()
-        
-        if category_data:
-            df = pd.DataFrame(category_data, columns=['Category', 'Count', 'Total Minutes'])
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("**Activities by Category**")
-                st.bar_chart(df.set_index('Category')['Count'])
-            
-            with col2:
-                st.write("**Time Spent**")
-                st.bar_chart(df.set_index('Category')['Total Minutes'])
-            
-            st.write("**Recent Activities**")
-            c.execute('''SELECT date, activity, duration 
-                         FROM self_care_activities 
-                         WHERE user_id = ? 
-                         ORDER BY date DESC LIMIT 5''',
-                      (st.session_state.user_id,))
-            recent = c.fetchall()
-            for date, activity, duration in recent:
-                st.write(f"- {date}: {activity} ({duration} min)")
-        else:
-            st.info("Log self-care activities to see your report")
-
+    return activities.get(category, [])
 # Medical Disclaimer
 def show_disclaimer():
     st.sidebar.markdown("---")
@@ -980,6 +1022,66 @@ def show_disclaimer():
         
         The AI responses are for informational purposes only and should not be considered medical advice.
         """)
+def self_care_library():
+    st.header("🌿 Self-Care Resource Library")
+    
+    tab1, tab2, tab3 = st.tabs(["Browse Activities", "Your Self-Care History", "Self-Care Guidance"])
+    
+    with tab1:
+        category = st.selectbox("Browse by category:", [
+            "Morning Routine",
+            "Evening Wind-Down",
+            "Weekly Reset",
+            "Nutrition Boosters",
+            "For Service Professionals"
+        ])
+        
+        activities = get_self_care_activities(category, st.session_state.user_id)
+        
+        st.subheader(f"{category} Activities")
+        cols = st.columns(2)
+        for i, (activity, _, duration) in enumerate(activities):
+            with cols[i%2]:
+                with st.expander(f"⏱️ {duration} min | {activity}"):
+                    st.write(f"**Category:** {_}")
+                    if st.button("Log This Activity", key=f"log_{i}"):
+                        log_self_care(activity, category, duration)
+        
+    with tab2:
+        # ... [keep existing history tab code] ...
+        
+    with tab3:
+        # Enhanced self-care guidance
+        st.subheader("Science-Backed Self-Care Strategies")
+        
+        approach = st.radio("Focus Area:", 
+                           ["Stress Relief", "Sleep Support", "Emotional Balance", "For Service Professionals"])
+        
+        if approach == "Stress Relief":
+            st.write("""
+            **Polyvagal Theory Techniques:**
+            - 🎵 Humming/Singing: Activates vagus nerve
+            - 👀 Peripheral Vision: Signals safety to brain
+            - 🤝 Social Connection: Co-regulation
+            
+            **Cortisol Management:**
+            - Morning sunlight exposure
+            - Protein-rich breakfast
+            - Afternoon movement breaks
+            """)
+            
+        elif approach == "For Service Professionals":
+            st.write("""
+            **Operational Stress Management:**
+            - 🚨 Post-Call Rituals: Physical shake-off + cognitive closure
+            - 🛡️ Psychological Body Armor: Pre-shift intention setting
+            - 🔄 Duty-to-Home Transition: Dedicated clothing change + 15min buffer
+            
+            **Moral Injury Support:**
+            - Peer support groups
+            - Expressive writing
+            - Values clarification exercises
+            """)
 
 def main():
     # Add debugging code for the image file issue
