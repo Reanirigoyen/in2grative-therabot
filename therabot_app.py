@@ -25,11 +25,13 @@ conn = sqlite3.connect('therapy_app.db', check_same_thread=False)
 c = conn.cursor()
 
 # Create tables if they don't exist
-c.execute('''CREATE TABLE IF NOT EXISTS users
-             (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-              username TEXT UNIQUE, 
-              password TEXT, 
-              email TEXT)''')
+c.execute('''CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT,
+    email TEXT,
+    user_type TEXT,
+    trauma_history INTEGER)''')
 
 c.execute('''CREATE TABLE IF NOT EXISTS mood_entries
              (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -116,10 +118,10 @@ def make_hashes(password):
 def check_hashes(password, hashed_text):
     return make_hashes(password) == hashed_text
 
-def create_user(username, password, email):
+def create_user(username, password, email, user_type, trauma_history):
     global c
-    c.execute('INSERT INTO users (username, password, email) VALUES (?,?,?)',
-              (username, make_hashes(password), email))
+    c.execute('INSERT INTO users (username, password, email, user_type, trauma_history) VALUES (?,?,?,?,?)',
+              (username, make_hashes(password), email, user_type, trauma_history))
     conn.commit()
     return c.lastrowid
 
@@ -742,6 +744,13 @@ def self_care_guidance():
             - CopLine
             """)
 
+def get_user_type(user_id):
+    c.execute('SELECT user_type, trauma_history FROM users WHERE id = ?', (user_id,))
+    row = c.fetchone()
+    if row:
+        return row[0], bool(row[1])
+    return 'general', False
+
 # Enhanced Welcome Page with User Type Selection
 def welcome_page():
     if logo_base64:
@@ -1168,47 +1177,22 @@ def show_disclaimer():
         """)
 
 def main():
-    # Add debugging code for the image file issue
-    import os
-    from pathlib import Path
-    
-    print(f"[MAIN] Current working directory: {os.getcwd()}")
-    
-    # Debug image path
-    image_path = r"C:\TherabotApp\In2Grative_Therapy_Logo_Design.png"
-    print(f"[MAIN] Does logo exist at full path? {os.path.exists(image_path)}")
-    if not os.path.exists(image_path):
-        print(f"[ERROR] Could not find logo at: {image_path}")
-        print(f"[DEBUG] Directory contents: {os.listdir(os.path.dirname(image_path))}")
-    
-    # Initialize session state
+    if 'conversation_history' not in st.session_state:
+        st.session_state.conversation_history = []
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "Welcome"
-    
-if 'conversation_history' not in st.session_state:
-    st.session_state.conversation_history = []
-
-if 'user_id' not in st.session_state:
+    if 'user_id' not in st.session_state:
         st.session_state.user_id = None
-    
+
     # Sidebar navigation (only show when logged in)
     if st.session_state.user_id:
         with st.sidebar:
-            print(f"[SIDEBAR] Logo exists? {logo_base64 is not None}")
-            if logo_base64:
-                st.markdown(f"""
-                <div style="text-align: center;">
-                    <img src="data:image/png;base64,{logo_base64}" style="max-width: 200px; margin-bottom: 10px;">
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div style="text-align: center;">
-                    <h3>In2Grative TheraBot</h3>
-                </div>
-                """, unsafe_allow_html=True)            
-            st.markdown(f"### Welcome, {st.session_state.username}!")
-            
+            # logo display code...
+
+            st.markdown(f"<h4>Welcome, {st.session_state.username}!</h4>", unsafe_allow_html=True)
+            st.markdown("---")
+            st.write("Use the buttons below to navigate the app.")
+
             nav_options = {
                 "Welcome": "🏠",
                 "Mood Scale": "📊",
@@ -1219,22 +1203,21 @@ if 'user_id' not in st.session_state:
                 "AI Therapist": "💬",
                 "Crisis Support": "🆘"
             }
-            
+
             for page, icon in nav_options.items():
                 if st.button(f"{icon} {page}"):
                     st.session_state.current_page = page
-            
+
             st.markdown("---")
             st.markdown(f"**Today is:** {datetime.now().strftime('%A, %B %d')}")
-            
+
             if st.button("🔐 Logout"):
                 st.session_state.user_id = None
                 st.session_state.current_page = "Welcome"
                 st.rerun()
-            
-            # Show disclaimer in sidebar
-            show_disclaimer()
-    
+
+        show_disclaimer()
+
     # Page routing
     if st.session_state.current_page == "Welcome":
         welcome_page()
@@ -1257,6 +1240,7 @@ if 'user_id' not in st.session_state:
         st.warning("Please login to access this page")
         st.session_state.current_page = "Welcome"
         st.rerun()
+
 if __name__ == "__main__":
     main()
 
@@ -1270,3 +1254,14 @@ def crisis_support():
     - 💙 Crisis Text Line: Text HOME to 741741
     - 🌍 International: [befrienders.org](https://www.befrienders.org)
     """)
+
+def get_user_type(user_id):
+    return ('general', 0)
+
+def mood_scale():
+    st.header("📊 Mood Scale")
+    st.write("Mood scale functionality coming soon.")
+
+def self_assessments():
+    st.header("🧐 Self-Assessments")
+    st.write("Self-assessment functionality coming soon.")
