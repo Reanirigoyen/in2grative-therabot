@@ -33,6 +33,22 @@ c.execute('''CREATE TABLE IF NOT EXISTS users (
     user_type TEXT,
     trauma_history INTEGER)''')
 
+c.execute('''CREATE TABLE IF NOT EXISTS ai_therapist_questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    date TEXT,
+    question TEXT,
+    response TEXT,
+    therapy_mode TEXT
+)''') 
+
+c.execute('''CREATE TABLE IF NOT EXISTS trauma_assessments
+             (id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER,
+              date TEXT,
+              pcl5_score INTEGER,
+              ptsdi_score INTEGER)''')
+
 c.execute('''CREATE TABLE IF NOT EXISTS mood_entries
              (id INTEGER PRIMARY KEY AUTOINCREMENT,
               user_id INTEGER,
@@ -545,53 +561,86 @@ def trauma_assessment():
                           (st.session_state.user_id, today, total))
                 conn.commit()
 
-# Enhanced AI Therapist Feature with Conversation Flow
+# Enhanced AI Therapist Feature with More Human-like Responses
 def ai_therapist():
     st.header("💬 AI Therapist")
     
-    # Therapy mode selection
+    # Therapy mode selection with more descriptive labels
     st.subheader("Therapy Approach")
+    therapy_mode_info = {
+        "CBT": "Focuses on identifying and changing thought patterns",
+        "ACT": "Emphasizes acceptance and values-based living",
+        "DBT": "Combines CBT with mindfulness and distress tolerance",
+        "IFS": "Views the mind as composed of distinct parts",
+        "CPT": "Specifically designed for trauma processing",
+        "Somatic": "Focuses on mind-body connections"
+    }
+    
     therapy_mode = st.radio(
         "Select therapeutic approach:",
-        ("CBT", "ACT", "DBT", "IFS", "CPT", "Somatic"),
+        options=list(therapy_mode_info.keys()),
+        format_func=lambda x: f"{x} - {therapy_mode_info[x]}",
         horizontal=True,
         index=0
     )
     st.session_state.therapy_mode = therapy_mode
     
+    # More conversational disclaimer
     st.warning("""
-    **Important Disclaimer:** 
-    This AI is not a substitute for professional therapy. It can provide general 
-    mental health information but cannot diagnose or treat conditions. 
-    For emergencies, please use the [crisis resources](#crisis-support).
+    **Before we begin, please know:**
+    - I'm here to listen and offer perspectives, but I'm not a human therapist
+    - If you're in crisis, please reach out to a professional immediately
+    - Everything you share is confidential (unless you disclose risk of harm)
+    - We can change approaches anytime if something isn't working for you
     """)
     
-    # Display conversation history
+    # Display conversation history with more natural formatting
     if st.session_state.conversation_history:
-        st.subheader("Conversation History")
+        st.subheader("Our Conversation")
         for i, (speaker, message) in enumerate(st.session_state.conversation_history):
             if speaker == "You":
-                st.markdown(f"**You:** {message}")
+                st.markdown(f"""
+                <div style='background-color: #f0f2f6; padding: 10px; border-radius: 10px; margin-bottom: 10px;'>
+                    <strong>You:</strong> {message}
+                </div>
+                """, unsafe_allow_html=True)
             else:
-                st.markdown(f"**TheraBot ({therapy_mode}):** {message}")
-            if i < len(st.session_state.conversation_history) - 1:
-                st.markdown("---")
+                st.markdown(f"""
+                <div style='background-color: #e6f7ff; padding: 10px; border-radius: 10px; margin-bottom: 10px;'>
+                    <strong>TheraBot ({therapy_mode}):</strong> {message}
+                </div>
+                """, unsafe_allow_html=True)
     
-    # User input
-    question = st.text_area("What would you like to discuss?", height=150)
+    # User input with more conversational prompts
+    prompt_questions = {
+        "general": "What would you like to talk about today?",
+        "CBT": "What thoughts or situations are on your mind?",
+        "ACT": "What's showing up for you right now?",
+        "DBT": "What emotion or situation would you like help with?",
+        "IFS": "Which part of you needs attention today?",
+        "CPT": "What memory or thought feels important to explore?",
+        "Somatic": "What physical or emotional sensations are present?"
+    }
     
-    if st.button("Send"):
+    question = st.text_area(
+        prompt_questions.get(therapy_mode, prompt_questions["general"]),
+        height=150,
+        placeholder="Type your thoughts here..."
+    )
+    
+    if st.button("Send", type="primary"):
         if not question.strip():
-            st.warning("Please enter a message")
+            st.warning("I'd love to hear from you. What's on your mind?")
         else:
             today = datetime.now().strftime("%Y-%m-%d")
             response = answer_ai_therapist_question(
                 question, 
                 st.session_state.get('user_id'),
-                therapy_mode
+                therapy_mode,
+                st.session_state.conversation_history
             )
             
-            # Add to conversation history
+            # Add to conversation history with natural flow
             st.session_state.conversation_history.append(("You", question))
             st.session_state.conversation_history.append(("TheraBot", response))
             
@@ -607,16 +656,209 @@ def ai_therapist():
     
     if st.button("Clear Conversation"):
         st.session_state.conversation_history = []
+        st.success("Conversation cleared. I'm here when you're ready to talk.")
         st.rerun()
     
+    # More natural closing
     st.markdown("---")
     st.write("""
     **Remember:**
-    - This is not medical advice
-    - AI doesn't replace human therapists
-    - For emergencies, use crisis resources
-    - Consider professional help for persistent concerns
+    - You can say anything here - I'm not here to judge
+    - It's okay to take breaks if you need them
+    - Your feelings are valid, even the difficult ones
     """)
+
+def answer_ai_therapist_question(question, user_id=None, therapy_mode='CBT', conversation_history=[]):
+    """Generate a more human-like response to mental health questions"""
+    user_type, trauma_history = get_user_type(user_id) if user_id else ('general', 0)
+    
+    # Analyze conversation context
+    last_few_messages = [msg[1] for msg in conversation_history[-4:] if msg[0] == "You"]
+    context = " ".join(last_few_messages).lower()
+    
+    # Define more natural responses for different therapy modes
+    therapy_responses = {
+        'CBT': {
+            "anxiety": [
+                "I hear how anxious you're feeling about this. What evidence do you have that supports or contradicts these worries?",
+                "Anxiety often makes us overestimate danger. What would you say to a friend who had this worry?",
+                "That sounds really stressful. Can we examine the thoughts behind this anxiety together?"
+            ],
+            "depression": [
+                "I'm sorry you're feeling this way. What negative thoughts come up most often for you?",
+                "Depression can really distort our thinking. Can you identify any patterns in these thoughts?",
+                "That sounds really hard. What would a slightly kinder perspective on this look like?"
+            ],
+            "stress": [
+                "Stress can feel overwhelming. How are you interpreting this situation?",
+                "I hear how stressed you are. What's one small way you might reframe this?",
+                "That sounds like a lot to handle. What thoughts make this feel most stressful?"
+            ]
+        },
+        'ACT': {
+            "anxiety": [
+                "Anxiety is tough. Rather than fighting it, what would it look like to make space for it while still doing what matters?",
+                "I hear that anxiety is present. What valued action could you take even with anxiety coming along?",
+                "What would it feel like to say 'I'm noticing anxiety' rather than 'I am anxious'?"
+            ],
+            "depression": [
+                "Depression can feel heavy. What small step toward something meaningful could you take today?",
+                "Even with depression present, what matters enough to you that you'd do it anyway?",
+                "What would acceptance of these feelings look like right now?"
+            ]
+        },
+        'DBT': {
+            "emotion": [
+                "Emotions can feel intense. What skills might help you ride this wave?",
+                "I hear the emotion in what you're sharing. Would a distress tolerance skill help right now?",
+                "What would wise mind say about this situation?"
+            ]
+        },
+        'IFS': {
+            "part": [
+                "I hear that part of you speaking. Can you describe it with curiosity?",
+                "What does this part need you to know?",
+                "How old does this part feel?"
+            ]
+        },
+        'CPT': {
+            "trauma": [
+                "Trauma memories can feel so present. What stuck points come up when you think about this?",
+                "How has your understanding of this experience changed over time?",
+                "What would challenge the most distressing thought about this memory?"
+            ]
+        },
+        'Somatic': {
+            "body": [
+                "Where do you feel that in your body right now?",
+                "Let's check in with your body. What sensations do you notice?",
+                "How does your body respond when you recall that experience?"
+            ]
+        }
+    }
+    
+    # Specialized responses for different user types
+    specialized_responses = {
+        'veteran': {
+            "combat": [
+                "Your service experiences stay with you. How are these memories affecting you today?",
+                "That sounds like it was really difficult. How does it show up for you now?",
+                "Combat leaves deep impressions. What helps you when these memories come up?"
+            ],
+            "transition": [
+                "Transitioning to civilian life brings unique challenges. What aspect feels hardest right now?",
+                "That shift from military to civilian life can be tough. What support do you wish you had?",
+                "What strengths from your service help you navigate this transition?"
+            ]
+        },
+        'first_responder': {
+            "critical_incident": [
+                "The things you see on the job can really stick with you. How is this affecting you?",
+                "That sounds like it was really intense. How are you taking care of yourself after that?",
+                "First responders see so much. What helps you process these experiences?"
+            ],
+            "shift": [
+                "The demands of shift work are real. How are you protecting your sleep and recovery?",
+                "What helps you transition between work mode and home mode?",
+                "How do you decompress after a tough shift?"
+            ]
+        }
+    }
+
+    # Crisis response with more compassionate tone
+    crisis_keywords = ["suicide", "kill myself", "end my life", "self-harm", "hurting myself"]
+    if any(keyword in question.lower() for keyword in crisis_keywords):
+        return """
+        **I'm really concerned about what you're sharing.** You're not alone in this pain, and there are people who want to help:
+
+        - For immediate support, please call/text 988 (U.S.) or your local crisis line
+        - Veterans: Press 1 after dialing 988
+        - First Responders: 1-800-267-5463 (Canada) or 1-888-731-3473 (U.S.)
+
+        Would you be willing to reach out to one of these resources? Your life matters so much.
+        """
+    
+    # More natural transitions between responses
+    transition_phrases = [
+        "I hear you...",
+        "That makes sense...",
+        "I can understand why you'd feel that way...",
+        "Thank you for sharing that...",
+        "Let's explore that together..."
+    ]
+    
+    # Check for specialized topics first with more natural language
+    if user_type in ['veteran', 'first_responder']:
+        for topic, responses in specialized_responses[user_type].items():
+            if topic in question.lower():
+                chosen_response = random.choice(responses)
+                transition = random.choice(transition_phrases)
+                return f"""
+                {transition} {chosen_response}
+
+                From a {therapy_mode} perspective, we might explore {random.choice([
+                    "how this shows up in your thoughts and feelings",
+                    "what values are involved here",
+                    "how your body responds when this comes up",
+                    "what parts of you get activated"
+                ])}.
+
+                Would you like to talk more about this?
+                """
+    
+    # More conversational trauma responses
+    trauma_keywords = ["trauma", "ptsd", "flashback", "trigger", "memory"]
+    if trauma_history or any(keyword in question.lower() for keyword in trauma_keywords):
+        trauma_responses = [
+            "Trauma can affect us in so many ways. How is this showing up for you?",
+            "That sounds really difficult. What helps you feel safe when this comes up?",
+            "I hear the pain in what you're sharing. How does this affect you now?"
+        ]
+        
+        chosen_response = random.choice(trauma_responses)
+        transition = random.choice(transition_phrases)
+        return f"""
+        {transition} {chosen_response}
+
+        From a {therapy_mode} perspective, we might {random.choice([
+            "explore how this memory affects you now",
+            "look at thoughts that keep coming up about this",
+            "notice how your body responds when remembering",
+            "identify parts that hold this experience"
+        ])}.
+
+        Would you like to try a grounding exercise together?
+        """
+    
+    # Find the most appropriate response
+    for topic, responses in therapy_responses.get(therapy_mode, {}).items():
+        if topic in question.lower():
+            return random.choice(responses)
+    
+    # If no specific topic matched, use a general response
+    general_responses = [
+        "Thank you for sharing that with me. What else comes up as you talk about this?",
+        "I hear what you're saying. How does this make you feel in your body?",
+        "That sounds important. Would you like to explore this further?",
+        "Tell me more about what that's like for you.",
+        "I'm listening. What would be most helpful to focus on right now?"
+    ]
+    
+    transition = random.choice(transition_phrases)
+    approach = random.choice([
+        "we might explore your thoughts about this",
+        "it could help to notice how your body responds",
+        "we could examine what values are involved",
+        "we might look at which parts of you are present"
+    ])
+    
+    return f"""
+    {transition} {random.choice(general_responses)}
+
+    From a {therapy_mode} perspective, {approach}.
+
+    Would you like to talk more about this?
+    """
 
 # Enhanced Self-Care Guidance with Specialized Content
 def self_care_guidance():
@@ -972,8 +1214,6 @@ def journal_entry():
                 if common_words:
                     st.info(f"**Connection to previous entry:** You mentioned similar themes about {', '.join(common_words)}.")
 
-# ... (rest of the code remains the same)
-
 # Enhanced Self-Care Library with tracking
 def self_care_library():
     st.header("🌿 Self-Care Resource Library")
@@ -1175,6 +1415,46 @@ def show_disclaimer():
         
         The AI responses are for informational purposes only and should not be considered medical advice.
         """)
+
+def mood_scale():
+    st.header("📊 Mood Scale")
+    
+    st.write("Rate your current mood from 0 (worst) to 10 (best):")
+    mood = st.slider("Mood", 0, 10, 5)
+    
+    note = st.text_area("Optional note about your mood")
+    
+    if st.button("Log Mood"):
+        if 'user_id' in st.session_state:
+            today = datetime.now().strftime("%Y-%m-%d")
+            c.execute('INSERT INTO mood_entries (user_id, date, mood, note) VALUES (?,?,?,?)',
+                      (st.session_state.user_id, today, mood, note))
+            conn.commit()
+            st.success("Mood logged successfully!")
+        else:
+            st.error("Please login to log your mood")
+
+def self_assessments():
+    st.header("🧐 Self-Assessments")
+    trauma_assessment()  # Use the existing trauma assessment function
+
+def crisis_support():
+    st.header("🆘 Crisis Support")
+    st.warning("""
+    If you or someone you know is in immediate danger, please call 911.
+
+    **Crisis Resources:**
+    - 🇺🇸 Veterans Crisis Line: 988 then press 1
+    - 💙 Crisis Text Line: Text HOME to 741741
+    - 🌍 International: [befrienders.org](https://www.befrienders.org)
+    - 🇨🇦 Canada: 1-833-456-4566 or text 45645
+    - 🇬🇧 UK: 116 123
+    - 🇦🇺 Australia: 13 11 14
+    
+    **For First Responders:**
+    - Safe Call Now: 206-459-3020
+    - CopLine: 1-800-267-5463
+    """)
 
 def main():
     if 'conversation_history' not in st.session_state:
